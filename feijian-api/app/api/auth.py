@@ -1,4 +1,5 @@
 import datetime as dt
+import hmac
 import random
 
 from fastapi import APIRouter, Depends, Request
@@ -9,12 +10,16 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.deps import client_ip
 from app.core.errors import AppError
+from app.core.ratelimit import SlidingWindowLimiter
 from app.core.security import create_token
 from app.models import User, VerificationCode
 from app.schemas.auth import EmailCodeIn, EmailCodeOut, LoginIn, LoginOut, UserOut
 from app.services import audit_svc
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# 登录验证码暴力破解防护：按 IP 计失败，5 次失败锁 5 分钟（内存实现，多 worker 近似）
+_login_throttle = SlidingWindowLimiter(limit=5, window_seconds=300)
 
 
 def _send_email(to: str, code: str) -> None:
@@ -65,20 +70,27 @@ def request_code(body: EmailCodeIn, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=LoginOut)
 def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
+    ip = client_ip(request)
+    ok, retry_after = _login_throttle.hit(f"fail:{ip}")
+    if not ok:
+        raise AppError(429, "LOGIN_LOCKED", f"失败次数过多，请 {retry_after} 秒后再试")
+
     now = dt.datetime.now(dt.UTC)
     vc = (
         db.query(VerificationCode)
         .filter(
             VerificationCode.channel == "email",
             VerificationCode.target == body.email,
-            VerificationCode.code == body.code,
             VerificationCode.used_at.is_(None),
         )
         .order_by(VerificationCode.id.desc())
         .first()
     )
-    if vc is None or vc.expires_at < now:
+    # 常量时间比较，避免逐位时序侧信道；码错误时不命中查询条件，统一 401
+    code_ok = vc is not None and hmac.compare_digest(vc.code, body.code)
+    if not code_ok or vc.expires_at < now:
         raise AppError(401, "CODE_INVALID", "验证码错误或已过期")
+    _login_throttle.reset(f"fail:{ip}")  # 成功后清零失败计数
     vc.used_at = now
 
     user = (
@@ -96,5 +108,5 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     user.last_login_at = now
     db.commit()
 
-    audit_svc.log(db, user.id, "login", target="email", ip=client_ip(request))
+    audit_svc.log(db, user.id, "login", target="email", ip=ip)
     return LoginOut(token=create_token(user.id, user.role), user=UserOut.model_validate(user))

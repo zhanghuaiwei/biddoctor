@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -6,7 +6,15 @@ from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.core.errors import AppError
 from app.models import Document, Task, User
-from app.schemas.project import DocumentStatusOut, ProjectIn, ProjectOut
+from app.schemas.project import (
+    DocumentListOut,
+    DocumentOut,
+    DocumentStatusOut,
+    ProjectIn,
+    ProjectOut,
+    ProjectPage,
+    UploadOut,
+)
 from app.services import audit_svc, document_svc, project_svc
 from app.services.storage import LocalStorage
 
@@ -15,19 +23,25 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 @router.post("", response_model=ProjectOut, status_code=201)
 def create_project(body: ProjectIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return project_svc.create(db, user.id, name=body.name, industry=body.industry)
+    project = project_svc.create(db, user.id, name=body.name, industry=body.industry)
+    audit_svc.log(db, user.id, "project_created", target=str(project.id),
+                  detail={"name": project.name, "industry": project.industry})
+    return project
 
 
 @router.get("")
 def list_projects(
     status: str | None = None,
-    limit: int = 20, offset: int = 0,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     items, total = project_svc.list_owned(
         db, user.id, status=status, limit=limit, offset=offset
     )
-    return {"items": [ProjectOut.model_validate(p) for p in items], "total": total}
+    return ProjectPage(
+        items=[ProjectOut.model_validate(p) for p in items], total=total
+    )
 
 
 @router.get("/{pid}", response_model=ProjectOut)
@@ -39,6 +53,8 @@ def get_project(pid: int, user: User = Depends(get_current_user), db: Session = 
 def delete_project(pid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = project_svc.get_owned(db, pid, user.id)
     project_svc.soft_delete(db, project)
+    audit_svc.log(db, user.id, "project_deleted", target=str(project.id),
+                  detail={"name": project.name})
 
 
 @router.post("/{pid}/documents", status_code=201)
@@ -55,7 +71,7 @@ def upload_document(
     storage = LocalStorage(get_settings().upload_dir)
     doc, dup, task_id = document_svc.upload(db, storage, project_id=project.id, role=role, file=file)
     audit_svc.log(db, user.id, "upload", target=str(doc.id), detail={"role": role, "dup": dup})
-    return {"document_id": doc.id, "task_id": task_id, "dup": dup}  # 02 §9.2 响应契约
+    return UploadOut(document_id=doc.id, task_id=task_id, dup=dup)  # 02 §9.2 响应契约
 
 
 @router.get("/documents/{did}/status", response_model=DocumentStatusOut)
@@ -77,7 +93,7 @@ def document_status(did: int, user: User = Depends(get_current_user), db: Sessio
     )
 
 
-@router.get("/{pid}/documents")
+@router.get("/{pid}/documents", response_model=DocumentListOut)
 def list_documents(pid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = project_svc.get_owned(db, pid, user.id)
     docs = (
@@ -86,12 +102,4 @@ def list_documents(pid: int, user: User = Depends(get_current_user), db: Session
         .order_by(Document.id.asc())
         .all()
     )
-    return {"items": [
-        {
-            "id": d.id, "role": d.role, "orig_name": d.orig_name, "sha256": d.sha256,
-            "size_bytes": d.size_bytes, "total_pages": d.total_pages,
-            "parse_status": d.parse_status, "parse_warnings": d.parse_warnings or [],
-            "created_at": d.created_at.isoformat(),
-        }
-        for d in docs
-    ]}
+    return DocumentListOut(items=[DocumentOut.model_validate(d) for d in docs])

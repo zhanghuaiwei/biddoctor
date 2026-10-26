@@ -8,12 +8,13 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.errors import AppError
 from app.models import LlmCall, Task
+from app.schemas.internal import HealthOut, MetricsOut
 from app.services.storage import LocalStorage
 
 router = APIRouter(tags=["internal"])
 
 
-@router.get("/healthz")
+@router.get("/healthz", response_model=HealthOut)
 def healthz(db: Session = Depends(get_db)):
     try:
         db.execute(sa.text("SELECT 1"))
@@ -25,7 +26,11 @@ def healthz(db: Session = Depends(get_db)):
         disk_free_mb = round(LocalStorage(s.upload_dir).disk_free_mb(), 1)
     except Exception:
         disk_free_mb = -1
-    return {"status": "ok" if db_ok else "degraded", "db": "ok" if db_ok else "down", "disk_free_mb": disk_free_mb}
+    return HealthOut(
+        status="ok" if db_ok else "degraded",
+        db="ok" if db_ok else "down",
+        disk_free_mb=disk_free_mb,
+    )
 
 
 def _internal_auth(request: Request, db: Session) -> None:
@@ -49,7 +54,7 @@ def _internal_auth(request: Request, db: Session) -> None:
     raise AppError(401, "UNAUTHORIZED", "内部接口未授权")
 
 
-@router.get("/internal/metrics")
+@router.get("/internal/metrics", response_model=MetricsOut)
 def metrics(request: Request, db: Session = Depends(get_db)):
     _internal_auth(request, db)
     day_start = dt.datetime.now(dt.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -67,9 +72,9 @@ def metrics(request: Request, db: Session = Depends(get_db)):
     pending_backlog = (
         db.query(sa.func.count(Task.id)).filter(Task.status == "pending").scalar() or 0
     )
-    return {
-        "date": day_start.date().isoformat(),
-        "tasks_today_by_status": by_status,
-        "llm_cost_cny_today": float(cost_today),
-        "pending_backlog": int(pending_backlog),
-    }
+    return MetricsOut(
+        date=day_start.date().isoformat(),
+        tasks_today_by_status=by_status,
+        llm_cost_cny_today=float(cost_today),
+        pending_backlog=int(pending_backlog),
+    )

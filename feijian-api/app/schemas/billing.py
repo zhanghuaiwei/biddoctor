@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel
@@ -12,12 +13,17 @@ class OrderIn(BaseModel):
 class OrderOut(BaseModel):
     order_no: str
     sku: str
-    amount_cny: float
+    # 金额用 Decimal（Numeric 列），避免 float 精度问题
+    amount_cny: Decimal
     status: str
     pay_hint: str = ""
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class OrderPage(BaseModel):
+    items: list[OrderOut]
 
 
 class QuotaOut(BaseModel):

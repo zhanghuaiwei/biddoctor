@@ -32,6 +32,13 @@ class ComparisonOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CompareStartedOut(BaseModel):
+    """POST /projects/{id}/compare 响应（02 §9.4）"""
+
+    comparison_id: int
+    task_id: int
+
+
 class ReportOut(BaseModel):
     id: int
     project_id: int

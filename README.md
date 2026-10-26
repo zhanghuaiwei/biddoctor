@@ -61,6 +61,7 @@
 
 ```
 biddoctor/
+├── AGENTS.md        # AI 编码工具工程约定（分层/事务/留痕/测试范式，所有 Agent 必读）
 ├── feijian-api/     # FastAPI 后端：core/models/schemas/services/api 分层
 │                    #   + worker 任务执行器（SKIP LOCKED）+ alembic 迁移
 │                    #   app/engine/（解析/抽取/对照/报告）与 app/llm/（Provider）为接口占位

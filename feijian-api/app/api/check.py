@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -6,8 +6,14 @@ from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.core.errors import AppError
 from app.models import CheckItem, Report, User
-from app.schemas.check import CheckItemOut, CheckItemsPage, ReportOut
-from app.services import compare_svc, project_svc
+from app.schemas.check import (
+    CheckItemOut,
+    CheckItemsPage,
+    CompareStartedOut,
+    ComparisonOut,
+    ReportOut,
+)
+from app.services import audit_svc, compare_svc, project_svc
 
 router = APIRouter(tags=["check"])
 
@@ -16,8 +22,8 @@ router = APIRouter(tags=["check"])
 def list_check_items(
     pid: int,
     category: str | None = None,
-    page: int = 1,
-    size: int = 50,
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=100),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -26,7 +32,7 @@ def list_check_items(
     if category:
         q = q.filter(CheckItem.category == category)
     total = q.count()
-    items = q.order_by(CheckItem.id.asc()).offset((max(page, 1) - 1) * size).limit(min(size, 100)).all()
+    items = q.order_by(CheckItem.id.asc()).offset((page - 1) * size).limit(size).all()
     stats = dict(
         db.query(CheckItem.category, func.count(CheckItem.id))
         .filter(CheckItem.project_id == project.id)
@@ -51,7 +57,7 @@ def make_checklist_report(
     raise AppError(501, "NOT_IMPLEMENTED", "清单生成引擎未接入（骨架版）——M1 实现")
 
 
-@router.post("/projects/{pid}/compare", status_code=202)
+@router.post("/projects/{pid}/compare", status_code=202, response_model=CompareStartedOut)
 def start_compare(
     pid: int,
     user: User = Depends(get_current_user),
@@ -59,18 +65,17 @@ def start_compare(
 ):
     project = project_svc.get_owned(db, pid, user.id)
     cmp_, task_id = compare_svc.start_compare(db, user, project)
-    return {"comparison_id": cmp_.id, "task_id": task_id}  # 02 §9.4 响应契约
+    audit_svc.log(
+        db, user.id, "compare_started", target=str(cmp_.id),
+        detail={"project_id": project.id, "task_id": task_id},
+    )
+    return CompareStartedOut(comparison_id=cmp_.id, task_id=task_id)  # 02 §9.4
 
 
-@router.get("/projects/{pid}/comparison")
+@router.get("/projects/{pid}/comparison", response_model=ComparisonOut)
 def latest_comparison(pid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = project_svc.get_owned(db, pid, user.id)
-    cmp_ = compare_svc.latest(db, project)
-    return {
-        "id": cmp_.id, "status": cmp_.status, "stats": cmp_.stats,
-        "created_at": cmp_.created_at.isoformat(),
-        "finished_at": cmp_.finished_at.isoformat() if cmp_.finished_at else None,
-    }
+    return compare_svc.latest(db, project)
 
 
 @router.get("/reports/{rid}", response_model=ReportOut)

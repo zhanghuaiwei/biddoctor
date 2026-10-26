@@ -36,6 +36,23 @@ class DocumentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class DocumentListOut(BaseModel):
+    items: list[DocumentOut]
+
+
+class ProjectPage(BaseModel):
+    items: list[ProjectOut]
+    total: int
+
+
+class UploadOut(BaseModel):
+    """POST /projects/{id}/documents 响应（02 §9.2）"""
+
+    document_id: int
+    task_id: int | None
+    dup: bool
+
+
 class DocumentStatusOut(BaseModel):
     parse_status: str
     progress: int

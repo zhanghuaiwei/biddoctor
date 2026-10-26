@@ -13,53 +13,73 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-# 这些路径不做限流：探活与浏览器 CORS 预检
+# 这些路径不做限流：探活与调试文档
 EXEMPT_PATHS = {"/api/healthz", "/docs", "/openapi.json", "/redoc"}
 EXEMPT_PREFIXES = ("/api/docs",)
 
 
-def _client_key(request: Request) -> str:
-    """限流维度：优先账号（JWT sub，不校验签名/查库，仅用于分桶），无凭据回退 IP。"""
+class SlidingWindowLimiter:
+    """内存滑动窗口计数器（中间件与登录节流共用）。"""
+
+    def __init__(self, limit: int, window_seconds: float = 60.0):
+        self.limit = max(1, limit)
+        self.window = window_seconds
+        self._hits: dict[str, deque[float]] = defaultdict(deque)
+
+    def hit(self, key: str) -> tuple[bool, int]:
+        """记录一次并返回 (是否放行, 建议重试秒数)。"""
+        now = time.monotonic()
+        hits = self._hits[key]
+        while hits and now - hits[0] > self.window:
+            hits.popleft()
+        if len(hits) >= self.limit:
+            return False, int(self.window - (now - hits[0])) + 1
+        hits.append(now)
+        return True, 0
+
+    def reset(self, key: str) -> None:
+        self._hits.pop(key, None)
+
+
+def _account_id(request: Request) -> str | None:
+    """验签取 JWT sub 作为账号分桶键；无效/伪造 token 一律回退 IP 分桶。"""
     auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer "):
-        try:
-            payload = pyjwt.decode(
-                auth.removeprefix("Bearer "),
-                options={"verify_signature": False, "verify_exp": False},
-            )
-            sub = payload.get("sub")
-            if sub:
-                return f"u:{sub}"
-        except Exception:
-            pass
-    ip = request.client.host if request.client else "unknown"
-    return f"ip:{ip}"
+    if not auth.startswith("Bearer "):
+        return None
+    from app.core.config import get_settings
+
+    try:
+        payload = pyjwt.decode(
+            auth.removeprefix("Bearer "),
+            get_settings().jwt_secret,
+            algorithms=["HS256"],  # 必须验签：unverified sub 可被伪造刷桶绕过限流
+        )
+    except Exception:
+        return None
+    sub = payload.get("sub")
+    return f"u:{sub}" if sub else None
+
+
+def _client_key(request: Request) -> str:
+    return _account_id(request) or f"ip:{request.client.host if request.client else 'unknown'}"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, limit_per_min: int = 120):
         super().__init__(app)
-        self.limit = max(1, limit_per_min)
-        self.window = 60.0
-        self._hits: dict[str, deque[float]] = defaultdict(deque)
+        self.limiter = SlidingWindowLimiter(limit_per_min, 60.0)
 
     async def dispatch(self, request: Request, call_next):
         if request.method == "OPTIONS" or request.url.path in EXEMPT_PATHS or \
                 request.url.path.startswith(EXEMPT_PREFIXES):
             return await call_next(request)
 
-        key = _client_key(request)
-        now = time.monotonic()
-        hits = self._hits[key]
-        while hits and now - hits[0] > self.window:
-            hits.popleft()
-        if len(hits) >= self.limit:
-            retry_after = int(self.window - (now - hits[0])) + 1
+        ok, retry_after = self.limiter.hit(_client_key(request))
+        if not ok:
             return JSONResponse(
                 status_code=429,
                 headers={"Retry-After": str(retry_after)},
                 content={"error": {"code": "RATE_LIMITED",
                                    "message": "请求过于频繁，请稍后再试"}},
             )
-        hits.append(now)
         return await call_next(request)

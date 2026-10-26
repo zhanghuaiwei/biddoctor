@@ -107,6 +107,17 @@ def _fail(task_id: int, code: str, msg: str) -> None:
         db.commit()
 
 
+def _requeue(task_id: int, delay_secs: int = 30) -> None:
+    """可恢复错误回 pending（02 §8 状态机：进程重启/超时类重试）"""
+    with SessionLocal() as db:
+        t = db.get(Task, task_id)
+        if t is None:
+            return
+        t.status = "pending"
+        t.run_after = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=delay_secs)
+        db.commit()
+
+
 def main_loop(poll: float = 3.0) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     log.info("worker started, handlers=%s", list(HANDLERS))
@@ -132,7 +143,13 @@ def main_loop(poll: float = 3.0) -> None:
         except Exception:
             log.exception("task execution error")
             if row is not None:
-                _fail(dict(row)["id"], "HANDLER_CRASH", "handler 异常，详见服务端日志")
+                r = dict(row)
+                # 02 §8：异常不区分类型时按可恢复处理——attempt 未满回 pending 退避重试，
+                # 满了才 failed（确定性失败应由 handler 内部显式 _fail，不走这里）
+                if r["attempt"] < MAX_ATTEMPT:
+                    _requeue(r["id"], delay_secs=30 * r["attempt"])
+                else:
+                    _fail(r["id"], "HANDLER_CRASH", "handler 异常，详见服务端日志")
 
 
 if __name__ == "__main__":
