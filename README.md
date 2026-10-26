@@ -1,6 +1,6 @@
-# BidProof · 标书废检 Agent
+# BidDoctor · 标书废检 Agent
 
-> **Bid-proof your bid.** 面向中国招投标场景的投标废标风险 AI 自查工具。
+> **Give your bid a health check before opening.** 面向中国招投标场景的投标废标风险 AI 自查工具。
 > An AI self-check tool that helps bidders catch disqualification (废标) risks before bid opening.
 >
 > 创建：2026-10-24 · 状态：MVP 骨架就绪，业务引擎 M1 接入中 · License: MIT
@@ -10,7 +10,7 @@
 ![Python](https://img.shields.io/badge/python-3.12+-informational)
 ![Vue](https://img.shields.io/badge/vue-3.x-42b883)
 
-**BidProof** 只做中立的「检」，不做「写」：上传招标文件（PDF），自动抽取资格性/符合性/★号强制/报价/签章密封五类废标相关条款，生成结构化《废标风险检查清单》，每条结论附原文页码溯源；后续版本支持招标×投标双文件逐条对照与红黄绿分级报告。
+**BidDoctor** 只做中立的「检」，不做「写」：上传招标文件（PDF），自动抽取资格性/符合性/★号强制/报价/签章密封五类废标相关条款，生成结构化《废标风险检查清单》，每条结论附原文页码溯源；后续版本支持招标×投标双文件逐条对照与红黄绿分级报告。
 
 `feijian`（废检拼音）为本仓库代码代号，目录 `feijian-api` / `feijian-web` / `feijian-site` 沿用。
 
@@ -59,7 +59,7 @@
 ## 代码仓库结构
 
 ```
-bidproof/
+biddoctor/
 ├── feijian-api/     # FastAPI 后端：core/models/schemas/services/api 分层
 │                    #   + worker 任务执行器（SKIP LOCKED）+ alembic 迁移
 │                    #   app/engine/（解析/抽取/对照/报告）与 app/llm/（Provider）为接口占位
@@ -109,7 +109,7 @@ npm run dev       # :5173，/api 代理到 8000
 
 ## 免责声明
 
-BidProof 输出为**辅助人工复核工具**，不构成任何「保证不废标」承诺；每条结论均附原文出处，高危项须人工确认。使用者应遵守所在采购项目的保密与合规要求。
+BidDoctor 输出为**辅助人工复核工具**，不构成任何「保证不废标」承诺；每条结论均附原文出处，高危项须人工确认。使用者应遵守所在采购项目的保密与合规要求。
 
 ## License
 
