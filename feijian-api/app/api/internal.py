@@ -1,4 +1,5 @@
 import datetime as dt
+import hmac
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Request
@@ -36,7 +37,7 @@ def healthz(db: Session = Depends(get_db)):
 def _internal_auth(request: Request, db: Session) -> None:
     s = get_settings()
     token = request.headers.get("X-Internal-Token", "")
-    if s.internal_token and token == s.internal_token:
+    if s.internal_token and hmac.compare_digest(token, s.internal_token):
         return
     # 未配置内部令牌时回退为管理员 Bearer（04 §6 告警脚本使用）
     auth = request.headers.get("Authorization", "")

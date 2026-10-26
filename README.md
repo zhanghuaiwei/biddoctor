@@ -79,7 +79,7 @@ biddoctor/
 ```bash
 # 后端（首次）
 cd feijian-api
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 docker compose up -d db                # 起 PostgreSQL(pgvector)
 .venv/bin/python scripts/bootstrap.py  # 建扩展+迁移（生产同样执行本脚本）
 .venv/bin/uvicorn app.main:app --reload          # API :8000，文档 /api/docs

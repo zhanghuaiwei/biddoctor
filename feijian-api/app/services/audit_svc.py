@@ -15,6 +15,24 @@ from app.models import AuditLog
 _logger = logging.getLogger("app.audit")
 
 
+class AuditAction:
+    """审计 action 注册表（留痕稳定性：全项目引用常量，禁魔法字符串）。
+
+    新增 action：在此登记 → 按 skill 留痕 checklist 打点 → 同步 skill/AGENTS.md。
+    """
+
+    LOGIN = "login"
+    UPLOAD = "upload"
+    PROJECT_CREATED = "project_created"
+    PROJECT_DELETED = "project_deleted"
+    ORDER_CREATED = "order_created"
+    ORDER_GRANT = "order_grant"  # 03 §2.11 枚举原文
+    COMPARE_STARTED = "compare_started"
+    DATA_PURGE = "data_purge"
+    ADMIN_CREATED = "admin_created"
+    ADMIN_PROMOTED = "admin_promoted"
+
+
 def _safe_ip(ip: str | None) -> str | None:
     """INET 列只接受合法 IP；非法值（unix socket/testclient 等）归 NULL。"""
     if not ip:

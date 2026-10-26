@@ -24,7 +24,9 @@ def my_quota(user: User = Depends(get_current_user), db: Session = Depends(get_d
 
 
 def _gen_order_no() -> str:
-    return "FJ" + dt.datetime.now().strftime("%y%m%d") + f"{random.randint(0, 999999):06d}"
+    # 订单号日期段用北京时间（03：FJ+YYMMDD+6 位随机）——容器 TZ 可能是 UTC，不能用本地时钟
+    bj_now = dt.datetime.now(dt.UTC) + dt.timedelta(hours=8)
+    return "FJ" + bj_now.strftime("%y%m%d") + f"{random.randint(0, 999999):06d}"
 
 
 @router.post("/orders", response_model=OrderOut, status_code=201)  # 02 §9.5 路径
@@ -51,7 +53,7 @@ def create_order(body: OrderIn, user: User = Depends(get_current_user), db: Sess
     else:
         raise AppError(500, "ORDER_NO_CONFLICT", "订单号生成冲突，请重试")
     audit_svc.log(
-        db, user.id, "order_created", target=order.order_no,
+        db, user.id, audit_svc.AuditAction.ORDER_CREATED, target=order.order_no,
         detail={"sku": order.sku, "amount_cny": str(order.amount_cny)},
     )
     out = OrderOut.model_validate(order)
@@ -90,5 +92,5 @@ def grant_order(
     quota_svc.grant_pack(db, order.user_id, order.sku, source_order=order.id)
     db.commit()
 
-    audit_svc.log(db, admin.id, "order_grant", target=order.order_no, detail={"user_id": order.user_id})
+    audit_svc.log(db, admin.id, audit_svc.AuditAction.ORDER_GRANT, target=order.order_no, detail={"user_id": order.user_id})
     return GrantOut(order_no=order.order_no, status="granted")

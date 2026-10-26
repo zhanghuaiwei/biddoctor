@@ -66,7 +66,7 @@ def start_compare(
     project = project_svc.get_owned(db, pid, user.id)
     cmp_, task_id = compare_svc.start_compare(db, user, project)
     audit_svc.log(
-        db, user.id, "compare_started", target=str(cmp_.id),
+        db, user.id, audit_svc.AuditAction.COMPARE_STARTED, target=str(cmp_.id),
         detail={"project_id": project.id, "task_id": task_id},
     )
     return CompareStartedOut(comparison_id=cmp_.id, task_id=task_id)  # 02 §9.4

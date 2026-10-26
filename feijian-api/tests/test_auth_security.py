@@ -1,5 +1,7 @@
 """认证安全集成测试：登录节流（暴力破解防护）+ 限流分桶验签——需要 FJ_TEST_DATABASE_URL"""
 
+import uuid
+
 import pytest
 
 from tests.conftest import TEST_DB_URL
@@ -68,6 +70,26 @@ def test_ratelimit_forged_token_falls_back_to_ip_bucket(client):
 
     req = Request(scope, _StubReceive())
     assert _account_id(req) is None
+
+
+def test_email_normalized_case_insensitive(client):
+    """email local 段归一：大写输入落库为小写，且与后续小写请求命中同一 target（冷却证明）"""
+    from app.core.db import SessionLocal
+    from app.models import User
+
+    upper = f"Case.Test-{uuid.uuid4().hex[:6]}@FJTEST.DEV"
+    code = client.post("/api/auth/email-code", json={"email": upper}).json()["dev_code"]
+    r = client.post("/api/auth/login", json={"email": upper, "code": code})
+    assert r.status_code == 200
+
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.email == upper.lower()).first()
+        assert user is not None  # 落库即小写，大写变体不产生第二个账号
+        assert db.query(User).filter(User.email == upper).first() is None
+
+    # 小写变体再发码 → 命中同一 target 的 60s 冷却（归一化生效的直接证据）
+    r2 = client.post("/api/auth/email-code", json={"email": upper.lower()})
+    assert r2.status_code == 429 and r2.json()["error"]["code"] == "CODE_TOO_FREQUENT"
 
 
 def test_audit_detail_carries_request_id(client):

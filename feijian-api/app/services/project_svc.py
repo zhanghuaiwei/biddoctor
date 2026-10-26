@@ -1,13 +1,16 @@
 import datetime as dt
 
+import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import Project
+from app.models import Project, User
 from app.services import quota_svc
 
 
 def create(db: Session, user_id: int, *, name: str, industry: str) -> Project:
+    # 行锁串行化并发创建：免费配额是计数型规则，check-then-act 无锁会被并发击穿超发
+    db.execute(sa.select(User.id).where(User.id == user_id).with_for_update())
     if quota_svc.free_left(db, user_id) <= 0:
         raise AppError(402, "QUOTA_EXCEEDED", "本月免费项目额度已用完")
     p = Project(

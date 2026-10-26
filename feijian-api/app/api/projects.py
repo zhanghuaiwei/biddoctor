@@ -24,7 +24,7 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 @router.post("", response_model=ProjectOut, status_code=201)
 def create_project(body: ProjectIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = project_svc.create(db, user.id, name=body.name, industry=body.industry)
-    audit_svc.log(db, user.id, "project_created", target=str(project.id),
+    audit_svc.log(db, user.id, audit_svc.AuditAction.PROJECT_CREATED, target=str(project.id),
                   detail={"name": project.name, "industry": project.industry})
     return project
 
@@ -53,7 +53,7 @@ def get_project(pid: int, user: User = Depends(get_current_user), db: Session = 
 def delete_project(pid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = project_svc.get_owned(db, pid, user.id)
     project_svc.soft_delete(db, project)
-    audit_svc.log(db, user.id, "project_deleted", target=str(project.id),
+    audit_svc.log(db, user.id, audit_svc.AuditAction.PROJECT_DELETED, target=str(project.id),
                   detail={"name": project.name})
 
 
@@ -70,7 +70,7 @@ def upload_document(
     project = project_svc.get_owned(db, pid, user.id)
     storage = LocalStorage(get_settings().upload_dir)
     doc, dup, task_id = document_svc.upload(db, storage, project_id=project.id, role=role, file=file)
-    audit_svc.log(db, user.id, "upload", target=str(doc.id), detail={"role": role, "dup": dup})
+    audit_svc.log(db, user.id, audit_svc.AuditAction.UPLOAD, target=str(doc.id), detail={"role": role, "dup": dup})
     return UploadOut(document_id=doc.id, task_id=task_id, dup=dup)  # 02 §9.2 响应契约
 
 

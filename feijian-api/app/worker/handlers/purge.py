@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import AuditLog, Document, LlmCall, Project, Task
+from app.services import audit_svc
 from app.services.storage import LocalStorage
 from app.worker.handlers.base import stub_done
 
@@ -104,14 +105,8 @@ def run(task: dict, db: Session) -> None:
             db.query(model).filter(model.created_at < cutoff).delete(synchronize_session=False)
         )
 
-    db.add(
-        AuditLog(
-            user_id=None,
-            action="data_purge",
-            target=f"task:{task['id']}",
-            detail=stats,
-        )
-    )
     db.commit()
+    audit_svc.log(db, None, audit_svc.AuditAction.DATA_PURGE, target=f"task:{task['id']}",
+                  detail=stats)
     log.info("purge done: %s", stats)
     stub_done(db, task["id"], stage="purge:done")

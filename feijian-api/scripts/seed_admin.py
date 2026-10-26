@@ -3,7 +3,7 @@
 用法：
     python scripts/seed_admin.py --email ops@example.com        # 不存在则创建，存在则提权
     python scripts/seed_admin.py --email ops@example.com --nickname 运营
-操作写 audit_logs（action='admin_seeded'）。MVP 人工收款核销依赖 /admin/* 接口。
+操作写 audit_logs（action=admin_created/admin_promoted）。MVP 人工收款核销依赖 /admin/* 接口。
 """
 
 import argparse
@@ -33,10 +33,10 @@ def main() -> None:
                 role="admin",
             )
             db.add(user)
-            action = "admin_created"
+            action = audit_svc.AuditAction.ADMIN_CREATED
         elif user.role != "admin":
             user.role = "admin"
-            action = "admin_promoted"
+            action = audit_svc.AuditAction.ADMIN_PROMOTED
         else:
             print(f"{args.email} 已是管理员，无需变更")
             return

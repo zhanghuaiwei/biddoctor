@@ -21,12 +21,12 @@ BidDoctor（代号 feijian）：标书废标风险 AI 自查。FastAPI + SQLAlch
 |---|---|
 | 分层 | `api/` 薄（校验+编排+审计）→ `services/` 事务边界 → `engine/` 纯函数；api 禁写业务逻辑 |
 | 响应契约 | 所有端点必须 `response_model=` Pydantic 模型，禁止裸 dict；分页参数用 `Query(ge=, le=)` |
-| 事务 | commit 只出现在 service/api 编排层；`task_svc.create` 只 flush；失败路径 `db.rollback()` 防半提交 |
-| 审计 | `audit_svc.log()` 独立事务、失败不阻断主业务；自动附带 `request_id`；**不参与业务事务** |
-| 时间 | 全部 `dt.datetime.now(dt.UTC)` + `TIMESTAMPTZ`；北京时区调度用 UTC+8 固定偏移 |
-| 金额 | `Decimal`（Numeric 列），schema 禁 float |
-| 软删 | 用户数据查询必带 `deleted_at.is_(None)` |
-| 安全 | JWT 验签白名单算法；取 sub 分桶必须验签；验证码比较用 `hmac.compare_digest`；INET 等强类型列写入前格式校验 |
+| 事务 | commit 只出现在 service/api 编排层；`task_svc.create` 只 flush；失败路径 `db.rollback()` 防半提交；**计数型规则（免费配额等）必须 `WITH FOR UPDATE` 行锁**；**一次性凭据（验证码等）必须原子 UPDATE 消费 + rowcount 判定** |
+| 审计 | `audit_svc.log()` 独立事务、失败不阻断主业务；action 一律引用 `AuditAction` 常量（禁魔法字符串）；自动附带 `request_id`；**不参与业务事务** |
+| 时间 | 全部 `dt.datetime.now(dt.UTC)` + `TIMESTAMPTZ`；北京时区调度用 UTC+8 固定偏移；**用户可见日期（订单号等）显式 +8h，禁止依赖容器本地时钟** |
+| 金额/邮箱 | 金额 `Decimal`（Numeric 列），schema 禁 float；email 全串 lower 归一（注册/登录同口径） |
+| 软删 | 用户数据查询必带 `deleted_at.is_(None)`；**例外：配额计数类统计不含软删过滤**（软删不释放当月名额，防刷） |
+| 安全 | JWT 验签白名单算法；取 sub 分桶必须验签；敏感凭据比较用 `hmac.compare_digest`（验证码/`internal_token`）；INET 等强类型列写入前格式校验；错误码注册表见 `app/core/errors.py` docstring |
 | 迁移 | DDL 唯一来源 `app/models/`；改模型 → `alembic revision --autogenerate`；迁移只加不删 |
 | 限流 | 复用 `app/core/ratelimit.py::SlidingWindowLimiter`；新端点默认受全局限流保护 |
 

@@ -19,7 +19,7 @@ def free_left(db: Session, user_id: int) -> int:
         .filter(
             Project.user_id == user_id,
             Project.created_at >= month_start,
-            Project.deleted_at.is_(None),
+            # 注意：不排除 deleted_at——软删项目仍计入当月已用，防"建→删→重建"刷免费解析
         )
         .scalar()
         or 0

@@ -116,6 +116,26 @@ def test_full_crud_flow(client, user_token, admin_token):
     assert client.get("/api/projects", headers=h).json()["total"] == 0
 
 
+def test_free_quota_exhausted(client, user_token):
+    """免费配额（02 §9.3：3 项目/月）耗尽 → 402；软删不释放当月名额"""
+    email_local = uuid.uuid4().hex[:8]
+    code = client.post(
+        "/api/auth/email-code", json={"email": f"quota-{email_local}@fjtest.dev"}
+    ).json()["dev_code"]
+    qh = _auth(client.post(
+        "/api/auth/login", json={"email": f"quota-{email_local}@fjtest.dev", "code": code}
+    ).json()["token"])
+
+    for i in range(3):
+        assert client.post("/api/projects", headers=qh, json={"name": f"P{i}"}).status_code == 201
+    r = client.post("/api/projects", headers=qh, json={"name": "超发尝试"})
+    assert r.status_code == 402 and r.json()["error"]["code"] == "QUOTA_EXCEEDED"
+    # 删一个也不释放当月名额（防刷：软删项目仍计入当月已用）
+    own_pid = client.get("/api/projects", headers=qh).json()["items"][0]["id"]
+    assert client.delete(f"/api/projects/{own_pid}", headers=qh).status_code == 204
+    assert client.post("/api/projects", headers=qh, json={"name": "删后重建"}).status_code == 402
+
+
 def test_cross_user_isolation(client, user_token):
     """越权防护：他人项目/文档/任务一律 404"""
     h = _auth(user_token)

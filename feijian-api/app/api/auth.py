@@ -2,6 +2,7 @@ import datetime as dt
 import hmac
 import random
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -22,6 +23,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 _login_throttle = SlidingWindowLimiter(limit=5, window_seconds=300)
 
 
+def _normalize_email(raw: str) -> str:
+    """EmailStr 只规范化域名段；local 段手动 lower，避免 Foo@ 与 foo@ 注册成两个账号。"""
+    return raw.strip().lower()
+
+
 def _send_email(to: str, code: str) -> None:
     # TODO(M1): 接入 Resend/SMTP（01·D8）。骨架版不真实发送，dev 环境直接返回固定码。
     pass
@@ -30,11 +36,12 @@ def _send_email(to: str, code: str) -> None:
 @router.post("/email-code", response_model=EmailCodeOut)
 def request_code(body: EmailCodeIn, db: Session = Depends(get_db)):
     s = get_settings()
+    email = _normalize_email(body.email)
     now = dt.datetime.now(dt.UTC)
 
     last = (
         db.query(VerificationCode)
-        .filter(VerificationCode.channel == "email", VerificationCode.target == body.email)
+        .filter(VerificationCode.channel == "email", VerificationCode.target == email)
         .order_by(VerificationCode.id.desc())
         .first()
     )
@@ -45,7 +52,7 @@ def request_code(body: EmailCodeIn, db: Session = Depends(get_db)):
         db.query(func.count(VerificationCode.id))
         .filter(
             VerificationCode.channel == "email",
-            VerificationCode.target == body.email,
+            VerificationCode.target == email,
             VerificationCode.created_at >= now.replace(hour=0, minute=0, second=0, microsecond=0),
         )
         .scalar()
@@ -58,18 +65,19 @@ def request_code(body: EmailCodeIn, db: Session = Depends(get_db)):
     db.add(
         VerificationCode(
             channel="email",
-            target=body.email,
+            target=email,
             code=code,
             expires_at=now + dt.timedelta(minutes=10),
         )
     )
     db.commit()
-    _send_email(body.email, code)
+    _send_email(email, code)
     return EmailCodeOut(sent=s.env != "dev", dev_code=code if s.env == "dev" else None)
 
 
 @router.post("/login", response_model=LoginOut)
 def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
+    email = _normalize_email(body.email)
     ip = client_ip(request)
     ok, retry_after = _login_throttle.hit(f"fail:{ip}")
     if not ok:
@@ -80,26 +88,33 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         db.query(VerificationCode)
         .filter(
             VerificationCode.channel == "email",
-            VerificationCode.target == body.email,
+            VerificationCode.target == email,
             VerificationCode.used_at.is_(None),
         )
         .order_by(VerificationCode.id.desc())
         .first()
     )
-    # 常量时间比较，避免逐位时序侧信道；码错误时不命中查询条件，统一 401
+    # 常量时间比较，避免逐位时序侧信道
     code_ok = vc is not None and hmac.compare_digest(vc.code, body.code)
     if not code_ok or vc.expires_at < now:
         raise AppError(401, "CODE_INVALID", "验证码错误或已过期")
+    # 原子消费：并发同码请求只有一个能把 used_at 置位（rowcount=0 即已被抢用）
+    consumed = db.execute(
+        sa.update(VerificationCode)
+        .where(VerificationCode.id == vc.id, VerificationCode.used_at.is_(None))
+        .values(used_at=now)
+    )
+    if consumed.rowcount == 0:
+        raise AppError(401, "CODE_INVALID", "验证码已被使用，请重新获取")
     _login_throttle.reset(f"fail:{ip}")  # 成功后清零失败计数
-    vc.used_at = now
 
     user = (
         db.query(User)
-        .filter(User.email == body.email, User.deleted_at.is_(None))
+        .filter(User.email == email, User.deleted_at.is_(None))
         .first()
     )
     if user is None:  # 新邮箱自动注册（02 §9.1）
-        user = User(email=body.email, nickname=body.email.split("@")[0])
+        user = User(email=email, nickname=email.split("@")[0])
         db.add(user)
         db.flush()
     if user.status == "banned":  # 封禁用户不发 token（deps 层还会兜底校验）
@@ -108,5 +123,5 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     user.last_login_at = now
     db.commit()
 
-    audit_svc.log(db, user.id, "login", target="email", ip=ip)
+    audit_svc.log(db, user.id, audit_svc.AuditAction.LOGIN, target="email", ip=ip)
     return LoginOut(token=create_token(user.id, user.role), user=UserOut.model_validate(user))
