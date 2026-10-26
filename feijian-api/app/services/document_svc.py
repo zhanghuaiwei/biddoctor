@@ -90,3 +90,12 @@ def owned_document(db: Session, document_id: int, user_id: int) -> Document:
     if doc is None:
         raise AppError(404, "DOCUMENT_NOT_FOUND", "文件不存在")
     return doc
+
+
+def list_by_project(db: Session, project_id: int) -> list[Document]:
+    return (
+        db.query(Document)
+        .filter(Document.project_id == project_id, Document.deleted_at.is_(None))
+        .order_by(Document.id.asc())
+        .all()
+    )

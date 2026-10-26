@@ -42,7 +42,6 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 
 const quota = ref<any>({ free_left: 0, packs: [] })

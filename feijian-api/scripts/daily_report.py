@@ -1,5 +1,6 @@
 """每日业务自查报表（04 §6：每日 08:00，输出昨日运营指标）。
 
+聚合逻辑统一走 services/metrics_svc（与 /internal/metrics 共用单一实现）。
 产出 JSON 落盘到 FJ_REPORT_DIR（默认 ./data/reports/daily/）：
     - 昨日任务成功率 / 各状态分布
     - 昨日任务平均耗时（秒，finished_at - created_at）
@@ -18,10 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # 支持直接 python scripts/xxx.py
 
-import sqlalchemy as sa
-
 from app.core.db import SessionLocal
-from app.models import LlmCall, Task
+from app.services import metrics_svc
 
 
 def main() -> None:
@@ -32,61 +31,9 @@ def main() -> None:
     day_end = day_start + dt.timedelta(days=1)
 
     with SessionLocal() as db:
-        rows = (
-            db.query(Task.status, sa.func.count(Task.id))
-            .filter(Task.created_at >= day_start, Task.created_at < day_end)
-            .group_by(Task.status)
-            .all()
-        )
-        by_status = {status: int(n) for status, n in rows}
-        total = sum(by_status.values())
-        succeeded = by_status.get("succeeded", 0)
-        # 仅统计已完结任务的平均耗时
-        avg_secs = (
-            db.query(
-                sa.func.avg(
-                    sa.extract("epoch", Task.finished_at) - sa.extract("epoch", Task.created_at)
-                )
-            )
-            .filter(
-                Task.created_at >= day_start,
-                Task.created_at < day_end,
-                Task.finished_at.is_not(None),
-            )
-            .scalar()
-        )
-        top_errors = (
-            db.query(Task.error_code, sa.func.count(Task.id))
-            .filter(
-                Task.created_at >= day_start,
-                Task.created_at < day_end,
-                Task.status == "failed",
-                Task.error_code.is_not(None),
-            )
-            .group_by(Task.error_code)
-            .order_by(sa.func.count(Task.id).desc())
-            .limit(5)
-            .all()
-        )
-        cost = (
-            db.query(sa.func.coalesce(sa.func.sum(LlmCall.cost_cny), 0))
-            .filter(LlmCall.created_at >= day_start, LlmCall.created_at < day_end)
-            .scalar()
-        )
-        backlog = (
-            db.query(sa.func.count(Task.id)).filter(Task.status == "pending").scalar() or 0
-        )
+        report = metrics_svc.daily_stats(db, day_start, day_end)
 
-    report = {
-        "date": day_start.date().isoformat(),
-        "tasks_total": total,
-        "tasks_by_status": by_status,
-        "success_rate": round(succeeded / total, 4) if total else None,
-        "avg_duration_secs": round(float(avg_secs), 1) if avg_secs is not None else None,
-        "llm_cost_cny": float(cost),
-        "top_error_codes": [{"code": code, "count": int(n)} for code, n in top_errors],
-        "pending_backlog": int(backlog),
-    }
+    report = {"date": day_start.date().isoformat(), **report}
 
     out_dir = os.environ.get("FJ_REPORT_DIR", "./data/reports/daily")
     os.makedirs(out_dir, exist_ok=True)

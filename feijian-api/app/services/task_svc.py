@@ -28,3 +28,12 @@ def get_owned(db: Session, task_id: int, user_id: int) -> Task | None:
         .filter(Task.id == task_id, Project.user_id == user_id, Project.deleted_at.is_(None))
         .first()
     )
+
+
+def latest_for_document(db: Session, document_id: int, type_: str = "parse") -> Task | None:
+    return (
+        db.query(Task)
+        .filter(Task.document_id == document_id, Task.type == type_)
+        .order_by(Task.id.desc())
+        .first()
+    )

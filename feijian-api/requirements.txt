@@ -1,15 +1,17 @@
-fastapi>=0.115
-uvicorn[standard]>=0.30
-sqlalchemy>=2.0
-alembic>=1.13
-pydantic>=2.7
-pydantic-settings>=2.2
-email-validator>=2.1
-PyJWT>=2.8
-python-multipart>=0.0.9
-pypdf>=4.0
-pgvector>=0.3
-psycopg[binary]>=3.1
+# 运行时依赖——精确版本 pin（与 CI/本地 21 tests 实测组合一致）
+# 升级流程：改版本 → make test-int 全绿 → CI 双绿 → 合并（禁止隐式漂移）
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+SQLAlchemy==2.1.6
+alembic==1.20.1
+pydantic==2.14.1
+pydantic-settings==2.16.1
+email-validator==2.3.0
+PyJWT==2.15.1
+python-multipart==0.0.32
+pypdf==6.21.2
+pgvector==0.5.1
+psycopg[binary]==3.3.6
 # M1 解析引擎启用 OCR 时再安装（体积大，见 02 §2）：
-# paddlepaddle>=3.0
-# paddleocr>=3.0
+# paddlepaddle==3.0.0
+# paddleocr==3.0.0

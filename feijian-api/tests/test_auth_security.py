@@ -12,7 +12,7 @@ pytestmark = pytest.mark.skipif(not TEST_DB_URL, reason="需要 FJ_TEST_DATABASE
 @pytest.fixture(autouse=True)
 def _clean_throttle():
     """登录节流为模块级内存状态，测试间必须清零避免相互污染"""
-    from app.api.auth import _login_throttle
+    from app.services.auth_svc import _login_throttle
 
     _login_throttle._hits.clear()
     yield

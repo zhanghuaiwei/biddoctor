@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.errors import AppError
-from app.models import LlmCall, Task
 from app.schemas.internal import HealthOut, MetricsOut
+from app.services import metrics_svc
 from app.services.storage import LocalStorage
 
 router = APIRouter(tags=["internal"])
@@ -59,23 +59,10 @@ def _internal_auth(request: Request, db: Session) -> None:
 def metrics(request: Request, db: Session = Depends(get_db)):
     _internal_auth(request, db)
     day_start = dt.datetime.now(dt.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    by_status = dict(
-        db.query(Task.status, sa.func.count(Task.id))
-        .filter(Task.created_at >= day_start)
-        .group_by(Task.status)
-        .all()
-    )
-    cost_today = (
-        db.query(sa.func.coalesce(sa.func.sum(LlmCall.cost_cny), 0))
-        .filter(LlmCall.created_at >= day_start)
-        .scalar()
-    )
-    pending_backlog = (
-        db.query(sa.func.count(Task.id)).filter(Task.status == "pending").scalar() or 0
-    )
+    stats = metrics_svc.daily_stats(db, day_start, day_start + dt.timedelta(days=1))
     return MetricsOut(
         date=day_start.date().isoformat(),
-        tasks_today_by_status=by_status,
-        llm_cost_cny_today=float(cost_today),
-        pending_backlog=int(pending_backlog),
+        tasks_today_by_status=stats["tasks_by_status"],
+        llm_cost_cny_today=stats["llm_cost_cny"],
+        pending_backlog=stats["pending_backlog"],
     )

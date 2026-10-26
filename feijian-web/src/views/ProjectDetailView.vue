@@ -74,7 +74,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { api } from '../api'
 
 const route = useRoute()
@@ -87,8 +86,10 @@ const tenderInput = ref<HTMLInputElement>()
 const bidInput = ref<HTMLInputElement>()
 let timer: any = null
 
-function statusType(s: string) {
-  return { done: 'success', failed: 'danger', need_review: 'warning' }[s] || 'info'
+type TagType = 'success' | 'danger' | 'warning' | 'info' | 'primary'
+
+function statusType(s: string): TagType {
+  return ({ done: 'success', failed: 'danger', need_review: 'warning' } as Record<string, TagType>)[s] || 'info'
 }
 
 async function loadProject() {

@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.core.errors import AppError
-from app.models import CheckItem, Report, User
+from app.models import User
 from app.schemas.check import (
     CheckItemOut,
     CheckItemsPage,
@@ -13,7 +12,7 @@ from app.schemas.check import (
     ComparisonOut,
     ReportOut,
 )
-from app.services import audit_svc, compare_svc, project_svc
+from app.services import audit_svc, check_svc, compare_svc, project_svc
 
 router = APIRouter(tags=["check"])
 
@@ -28,17 +27,7 @@ def list_check_items(
     db: Session = Depends(get_db),
 ):
     project = project_svc.get_owned(db, pid, user.id)
-    q = db.query(CheckItem).filter(CheckItem.project_id == project.id)
-    if category:
-        q = q.filter(CheckItem.category == category)
-    total = q.count()
-    items = q.order_by(CheckItem.id.asc()).offset((page - 1) * size).limit(size).all()
-    stats = dict(
-        db.query(CheckItem.category, func.count(CheckItem.id))
-        .filter(CheckItem.project_id == project.id)
-        .group_by(CheckItem.category)
-        .all()
-    )
+    items, total, stats = check_svc.list_check_items(db, project, category, page, size)
     return CheckItemsPage(
         items=[CheckItemOut.model_validate(i) for i in items],
         total=total,
@@ -80,14 +69,7 @@ def latest_comparison(pid: int, user: User = Depends(get_current_user), db: Sess
 
 @router.get("/reports/{rid}", response_model=ReportOut)
 def get_report(rid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    from app.models import Project
-
-    report = (
-        db.query(Report)
-        .join(Project, Report.project_id == Project.id)
-        .filter(Report.id == rid, Project.user_id == user.id)
-        .first()
-    )
+    report = check_svc.get_report_owned(db, rid, user.id)
     if report is None:
         raise AppError(404, "REPORT_NOT_FOUND", "报告不存在")
     return ReportOut.model_validate(report)
@@ -99,15 +81,8 @@ def export_report(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.models import Project
-
-    report = (
-        db.query(Report)
-        .join(Project, Report.project_id == Project.id)
-        .filter(Report.id == rid, Project.user_id == user.id)
-        .first()
-    )
+    report = check_svc.get_report_owned(db, rid, user.id)
     if report is None:
         raise AppError(404, "REPORT_NOT_FOUND", "报告不存在")
-    # 业务端点：HTML 渲染（M07 renderer，见 02 §6.2）未接入前明确 501
+    # 业务端点：HTML 渲染（M06 renderer，见 02 §6.2）未接入前明确 501
     raise AppError(501, "NOT_IMPLEMENTED", "报告导出引擎未接入（骨架版）——M1 实现")

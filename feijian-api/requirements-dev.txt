@@ -1,5 +1,5 @@
-# 开发/测试依赖（生产镜像不安装：Dockerfile 只 COPY requirements.txt）
+# 开发/测试依赖（生产镜像不安装：Dockerfile 只 COPY requirements.txt）——同样精确 pin
 -r requirements.txt
-httpx>=0.27
-pytest>=8.0
-ruff>=0.5
+httpx==0.28.1
+pytest==9.1.1
+ruff==0.17.2

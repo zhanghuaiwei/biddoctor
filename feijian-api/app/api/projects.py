@@ -5,7 +5,7 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.core.errors import AppError
-from app.models import Document, Task, User
+from app.models import User
 from app.schemas.project import (
     DocumentListOut,
     DocumentOut,
@@ -15,7 +15,12 @@ from app.schemas.project import (
     ProjectPage,
     UploadOut,
 )
-from app.services import audit_svc, document_svc, project_svc
+from app.services import (
+    audit_svc,
+    document_svc,
+    project_svc,
+    task_svc,
+)
 from app.services.storage import LocalStorage
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -29,7 +34,7 @@ def create_project(body: ProjectIn, user: User = Depends(get_current_user), db: 
     return project
 
 
-@router.get("")
+@router.get("", response_model=ProjectPage)
 def list_projects(
     status: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
@@ -77,12 +82,7 @@ def upload_document(
 @router.get("/documents/{did}/status", response_model=DocumentStatusOut)
 def document_status(did: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = document_svc.owned_document(db, did, user.id)
-    task = (
-        db.query(Task)
-        .filter(Task.document_id == doc.id, Task.type == "parse")
-        .order_by(Task.id.desc())
-        .first()
-    )
+    task = task_svc.latest_for_document(db, doc.id, type_="parse")
     return DocumentStatusOut(
         parse_status=doc.parse_status,
         progress=task.progress if task else (100 if doc.parse_status == "done" else 0),
@@ -96,10 +96,5 @@ def document_status(did: int, user: User = Depends(get_current_user), db: Sessio
 @router.get("/{pid}/documents", response_model=DocumentListOut)
 def list_documents(pid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = project_svc.get_owned(db, pid, user.id)
-    docs = (
-        db.query(Document)
-        .filter(Document.project_id == project.id, Document.deleted_at.is_(None))
-        .order_by(Document.id.asc())
-        .all()
-    )
+    docs = document_svc.list_by_project(db, project.id)
     return DocumentListOut(items=[DocumentOut.model_validate(d) for d in docs])
