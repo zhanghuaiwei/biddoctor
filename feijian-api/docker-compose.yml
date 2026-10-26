@@ -1,0 +1,34 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: feijian
+      POSTGRES_PASSWORD: feijian
+      POSTGRES_DB: feijian
+    volumes:
+      - ./data/pg:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+  # 本地开发通常只需 db：`docker compose up -d db`
+  api:
+    build: .
+    environment:
+      FJ_DATABASE_URL: postgresql+psycopg://feijian:feijian@db:5432/feijian
+      FJ_JWT_SECRET: change-me
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    restart: always
+    command: sh -c "python scripts/bootstrap.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  worker:
+    build: .
+    environment:
+      FJ_DATABASE_URL: postgresql+psycopg://feijian:feijian@db:5432/feijian
+    depends_on:
+      - db
+    restart: always
+    command: python -m app.worker.runner

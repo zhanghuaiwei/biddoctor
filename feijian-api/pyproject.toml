@@ -1,0 +1,22 @@
+[project]
+name = "feijian-api"
+version = "0.1.0"
+description = "标书废检 Agent 后端（骨架：框架 + 非业务 CRUD）"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# E501 行长交给 line-length 与格式化，不作为阻塞项（中文注释普遍超宽）
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI 官方惯用法：Depends()/File()/Form() 作为参数默认值
+"app/api/*" = ["B008"]
+"app/core/deps.py" = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
