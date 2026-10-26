@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         ' "cmp_x20": {"amount_cny": 199, "title": "对照检查 20 次包"}}'
     )
     cors_origins: str = "http://localhost:5173"
+    rate_limit_per_min: int = 120  # 每账号+IP 每分钟请求数（02 §9），0=关闭限流
 
     @model_validator(mode="after")
     def _prod_guard(self):

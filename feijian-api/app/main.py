@@ -16,6 +16,13 @@ def create_app() -> FastAPI:
     setup_logging()
     app = FastAPI(title="feijian-api", version="0.1.0", docs_url="/api/docs")
     s = get_settings()
+    # add_middleware 后加的在外层。期望请求流：
+    # request_id → security_headers → CORS → RateLimit → route
+    # （限流在 CORS 内层，保证 429 响应也带 CORS 头）
+    if s.rate_limit_per_min > 0:  # 02 §9：限流按账号+IP（healthz 豁免）
+        from app.core.ratelimit import RateLimitMiddleware
+
+        app.add_middleware(RateLimitMiddleware, limit_per_min=s.rate_limit_per_min)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[o for o in s.cors_origins.split(",") if o],
@@ -23,6 +30,15 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def security_headers_middleware(request: Request, call_next):
+        # 基础安全头（04 §5）；CSP/HTTPS 由生产 nginx 层负责（deploy/nginx.conf）
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        return response
 
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):

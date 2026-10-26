@@ -3,6 +3,11 @@
 用法：python scripts/bootstrap.py
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # 支持直接 python scripts/xxx.py
+
 from alembic.config import Config
 from sqlalchemy import text
 

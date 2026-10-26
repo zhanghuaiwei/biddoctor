@@ -1,5 +1,6 @@
 """任务执行器：claim（SKIP LOCKED）→ dispatch → 状态机（02 §8）。
-骨架版 handler 全部为桩（详见 handlers/），只验证队列与状态流转，不含业务逻辑。"""
+骨架版 handler 全部为桩（详见 handlers/），只验证队列与状态流转，不含业务逻辑。
+内置 cron 型任务：每日一条 type='purge'（03 §5 数据生命周期）。"""
 
 import datetime as dt
 import logging
@@ -9,7 +10,8 @@ import sqlalchemy as sa
 
 from app.core.db import SessionLocal
 from app.models import Task
-from app.worker.handlers import checklist, compare, embed, extract, parse
+from app.worker import heartbeat
+from app.worker.handlers import checklist, compare, embed, extract, parse, purge
 
 log = logging.getLogger("worker")
 
@@ -19,6 +21,7 @@ HANDLERS = {
     "embed": embed.run,
     "checklist": checklist.run,
     "compare": compare.run,
+    "purge": purge.run,
 }
 
 CLAIM_SQL = sa.text(
@@ -36,6 +39,38 @@ CLAIM_SQL = sa.text(
 
 STALE_HEARTBEAT = dt.timedelta(seconds=300)
 MAX_ATTEMPT = 3
+
+# purge 调度（03 §5：每日 03:00）。部署基线为香港服务器（UTC+8），按北京时间触发；
+# 固定偏移无夏令时问题。任务幂等：每个北京日只建一条。
+PURGE_TZ_OFFSET = dt.timedelta(hours=8)
+PURGE_AT = dt.time(3, 5)
+
+
+def enqueue_daily_purge(bj_now: dt.datetime | None = None) -> int | None:
+    """北京时间每日 03:05 后创建当日 purge 任务（幂等），返回任务 id 或 None。
+    bj_now 可注入便于测试。"""
+    if bj_now is None:
+        bj_now = dt.datetime.now(dt.UTC) + PURGE_TZ_OFFSET
+    if bj_now.tzinfo is None:
+        bj_now = bj_now.replace(tzinfo=dt.UTC)
+    if bj_now.time() < PURGE_AT:
+        return None
+    day_start_utc = (
+        dt.datetime.combine(bj_now.date(), dt.time.min) - PURGE_TZ_OFFSET
+    ).replace(tzinfo=dt.UTC)
+    with SessionLocal() as db:
+        exists = (
+            db.query(Task.id)
+            .filter(Task.type == "purge", Task.created_at >= day_start_utc)
+            .first()
+        )
+        if exists:
+            return None
+        t = Task(type="purge", status="pending", run_after=dt.datetime.now(dt.UTC))
+        db.add(t)
+        db.commit()
+        log.info("daily purge task created id=%s (bj date %s)", t.id, bj_now.date())
+        return t.id
 
 
 def recover_stale() -> None:
@@ -75,9 +110,11 @@ def _fail(task_id: int, code: str, msg: str) -> None:
 def main_loop(poll: float = 3.0) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     log.info("worker started, handlers=%s", list(HANDLERS))
+    heartbeat.start_heartbeat_thread()
     while True:
         row = None
         try:
+            enqueue_daily_purge()
             recover_stale()
             with SessionLocal() as db:
                 row = db.execute(CLAIM_SQL).mappings().first()

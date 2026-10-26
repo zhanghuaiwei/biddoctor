@@ -6,6 +6,7 @@
 > 创建：2026-10-24 · 状态：MVP 骨架就绪，业务引擎 M1 接入中 · License: MIT
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/zhanghuaiwei/biddoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/zhanghuaiwei/biddoctor/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-MVP%20skeleton-blue)
 ![Python](https://img.shields.io/badge/python-3.12+-informational)
 ![Vue](https://img.shields.io/badge/vue-3.x-42b883)
@@ -95,6 +96,19 @@ npm run dev       # :5173，/api 代理到 8000
 
 # dev 环境登录验证码固定为 123456（FJ_ENV=dev）
 ```
+
+运维（`feijian-api/` 下，与 03/04 设计文档对应）：
+
+```bash
+make bootstrap        # 初始化库（扩展+迁移）
+make seed-admin EMAIL=ops@example.com   # 管理员账号（03 §4）
+make daily-report     # 每日业务自查报表（04 §6，crontab 08:00）
+make backup           # pg_dump 备份，保留 14 天（03 §6，crontab 03:30）
+make restore-backup FILE=/data/backups/xxx.dump   # 恢复演练（独立库）
+```
+
+生产部署用 `docker-compose.prod.yml`（nginx + api + worker + db 完整拓扑，secrets 经 .env 注入）；
+任务执行器内置每日数据生命周期清理（type=purge，03 §5）与 running 任务心跳（02 §8）。
 
 配置经环境变量注入（前缀 `FJ_`，如 `FJ_DATABASE_URL` / `FJ_JWT_SECRET` / `FJ_UPLOAD_DIR`）；prod 环境启动强制校验强密钥与内部令牌。
 
