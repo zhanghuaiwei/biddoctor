@@ -1,7 +1,7 @@
 <template>
   <el-card>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
-      <span style="font-weight: 700">检查项目（本月免费额度剩余 {{ freeLeft }} 个）</span>
+    <div class="head">
+      <span class="head-title">检查项目（本月免费额度剩余 {{ freeLeft }} 个）</span>
       <el-button type="primary" @click="dialog = true">新建项目</el-button>
     </div>
     <el-table :data="items" v-loading="loading">
@@ -24,7 +24,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialog" title="新建项目" width="420px">
+    <el-dialog v-model="dialog" title="新建项目" width="min(420px, 92vw)">
       <el-form label-position="top">
         <el-form-item label="项目名称">
           <el-input v-model="form.name" placeholder="如：xx医院设备采购-2026-10" />
@@ -91,3 +91,22 @@ async function remove(row: any) {
 
 onMounted(load)
 </script>
+
+<style scoped lang="less">
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  // 窄屏标题与按钮换行，避免挤压
+  @media (max-width: @bp-sm) {
+    flex-wrap: wrap;
+  }
+}
+
+.head-title {
+  font-weight: 700;
+}
+</style>

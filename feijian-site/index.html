@@ -27,6 +27,19 @@
     .card .num { font-size: 30px; color: #be3b2e; font-weight: 800; margin: 12px 0; }
     .card span { color: #66707c; font-size: 14px; line-height: 1.7; display: block; }
     footer { padding: 28px 8vw; color: #66707c; font-size: 13px; border-top: 1px solid #e4e8ee; }
+    /* 移动端适配：<768px 缩字号、收边距、卡片铺满 */
+    @media (max-width: 768px) {
+      .nav { padding: 14px 16px; }
+      .hero { padding: 48px 16px 56px; }
+      .hero h1 { font-size: 26px; }
+      .hero p { font-size: 15px; }
+      .cta { display: block; text-align: center; padding: 14px 20px; }
+      .feats { padding: 36px 16px; gap: 16px; }
+      .feat { min-width: 0; flex-basis: 100%; padding: 20px; }
+      .price { padding: 36px 16px 48px; }
+      .card { width: 100%; }
+      footer { padding: 20px 16px; }
+    }
   </style>
 </head>
 <body>

@@ -5,6 +5,15 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
+  resolve: {
+    alias: { '@': '/src', '@styles': '/src/styles' },
+  },
+  css: {
+    preprocessorOptions: {
+      // 设计变量自动注入每个 <style lang="less">（variables.less），无需手动 @import
+      less: { additionalData: `@import "@styles/variables.less";`, javascriptEnabled: true },
+    },
+  },
   plugins: [
     vue(),
     // Element Plus 按需引入（组件样式自动注入），构建产物不再打包全量库

@@ -1,19 +1,19 @@
 <template>
-  <div style="max-width: 420px; margin: 12vh auto; background: #fff; padding: 40px; border-radius: 8px">
-    <h2 style="margin-top: 0">标书废检 · 登录</h2>
+  <div class="login-card">
+    <h2 class="title">标书废检 · 登录</h2>
     <el-form label-position="top">
       <el-form-item label="邮箱">
         <el-input v-model="email" placeholder="you@example.com" />
       </el-form-item>
       <el-form-item label="验证码">
-        <div style="display: flex; gap: 8px; width: 100%">
+        <div class="code-row">
           <el-input v-model="code" placeholder="6 位验证码" />
           <el-button :disabled="cooling > 0" @click="sendCode">
             {{ cooling > 0 ? `${cooling}s` : '获取验证码' }}
           </el-button>
         </div>
       </el-form-item>
-      <el-button type="primary" style="width: 100%" :loading="loading" @click="login">登录 / 注册</el-button>
+      <el-button type="primary" class="submit" :loading="loading" @click="login">登录 / 注册</el-button>
     </el-form>
   </div>
 </template>
@@ -65,3 +65,35 @@ async function login() {
   }
 }
 </script>
+
+<style scoped lang="less">
+.login-card {
+  max-width: 420px;
+  margin: 12vh 16px 24px;
+  background: #fff;
+  padding: 40px;
+  border-radius: @radius;
+
+  @media (min-width: @bp-sm) {
+    margin: 12vh auto;
+  }
+
+  @media (max-width: @bp-sm) {
+    padding: 24px 20px;
+  }
+}
+
+.title {
+  margin-top: 0;
+}
+
+.code-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.submit {
+  width: 100%;
+}
+</style>

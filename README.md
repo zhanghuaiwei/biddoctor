@@ -50,7 +50,7 @@
 | 大模型 | 智谱 GLM（重/轻两档，版本进配置）；OpenAI 兼容 Provider 抽象 | DeepSeek/Qwen：改 base_url + 配置 |
 | 文档解析 | PyMuPDF + pdfplumber + PaddleOCR（独立可选安装） | MinerU / TextIn：替换 Parser 实现类 |
 | 后端 | Python 3.12 + FastAPI + SQLAlchemy 2 + Alembic | — |
-| 前端 | Vue 3 + Vite + TypeScript + Element Plus（SPA）＋ 静态落地页（nginx 直出） | — |
+| 前端 | Vue 3 + Vite + TypeScript + Element Plus（SPA，pnpm + less + 响应式）＋ 静态落地页（nginx 直出） | — |
 | 数据库 | PostgreSQL 16 + pgvector（1024 维）+ pg_trgm | — |
 | 任务队列 | PostgreSQL `SKIP LOCKED` 任务表（不引入 Redis） | 量大后换 arq/celery |
 | 部署 | 单机 Docker Compose（2C4G 起步） | 跑通后迁国内云 |
@@ -89,10 +89,10 @@ docker compose up -d db                # 起 PostgreSQL(pgvector)
 .venv/bin/python -m pytest tests -q
 .venv/bin/ruff check app tests scripts   # lint
 
-# 前端
-cd feijian-web && npm i
-npm run build     # vite build + vue-tsc 类型门禁
-npm run dev       # :5173，/api 代理到 8000
+# 前端（pnpm，版本见 package.json packageManager；corepack enable pnpm 启用）
+cd feijian-web && pnpm install
+pnpm build        # vite build + vue-tsc 类型门禁
+pnpm dev          # :5173，/api 代理到 8000
 # 落地页：feijian-site/index.html 静态部署即可
 
 # dev 环境登录验证码固定为 123456（FJ_ENV=dev）

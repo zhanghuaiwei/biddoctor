@@ -1,0 +1,26 @@
+// 全局基础样式（less）；变量经 vite additionalData 自动注入（variables.less）
+@import (reference) './variables.less';
+
+body {
+  margin: 0;
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: @c-bg;
+  color: @c-text;
+}
+
+// 全局响应式基础：容器流式 + 弹性元素防溢出（view 级细排布在各组件内）
+.page {
+  max-width: @page-max;
+  margin: 0 auto;
+  padding: 16px;
+
+  @media (min-width: @bp-md) {
+    padding: 24px 24px;
+  }
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}

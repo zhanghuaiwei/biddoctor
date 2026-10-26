@@ -1,24 +1,24 @@
 <template>
   <div>
-    <el-card style="margin-bottom: 16px" header="我的次数">
+    <el-card class="block" header="我的次数">
       <p>本月免费项目额度剩余：<b>{{ quota.free_left }}</b> 个</p>
-      <div v-for="p in quota.packs" :key="p.id" style="color: #66707c">
+      <div v-for="p in quota.packs" :key="p.id" class="pack-line">
         次数包 {{ p.type }}：剩余 <b>{{ p.remain }}</b> 次
         <span v-if="p.expires_at">（{{ p.expires_at.slice(0, 10) }} 到期）</span>
       </div>
       <el-empty v-if="!quota.packs.length" description="暂无次数包" :image-size="50" />
     </el-card>
 
-    <el-card style="margin-bottom: 16px" header="购买次数包（人工收款）">
-      <div style="display: flex; gap: 16px">
-        <el-card shadow="never" style="width: 260px">
-          <div style="font-weight: 700">对照检查 5 次包</div>
-          <div style="font-size: 24px; margin: 8px 0; color: #be3b2e">¥99</div>
+    <el-card class="block" header="购买次数包（人工收款）">
+      <div class="packs">
+        <el-card shadow="never" class="pack">
+          <div class="pack-name">对照检查 5 次包</div>
+          <div class="pack-price">¥99</div>
           <el-button type="primary" plain size="small" @click="order('cmp_x5')">下单</el-button>
         </el-card>
-        <el-card shadow="never" style="width: 260px">
-          <div style="font-weight: 700">对照检查 20 次包</div>
-          <div style="font-size: 24px; margin: 8px 0; color: #be3b2e">¥199</div>
+        <el-card shadow="never" class="pack">
+          <div class="pack-name">对照检查 20 次包</div>
+          <div class="pack-price">¥199</div>
           <el-button type="primary" plain size="small" @click="order('cmp_x20')">下单</el-button>
         </el-card>
       </div>
@@ -69,3 +69,41 @@ async function order(sku: string) {
 
 onMounted(load)
 </script>
+
+<style scoped lang="less">
+.block {
+  margin-bottom: 16px;
+}
+
+.pack-line {
+  color: @c-text-sub;
+}
+
+// 商品卡：宽屏两列、窄屏折行铺满
+.packs {
+  display: flex;
+  gap: 16px;
+
+  @media (max-width: @bp-sm) {
+    flex-direction: column;
+  }
+}
+
+.pack {
+  width: 260px;
+
+  @media (max-width: @bp-sm) {
+    width: 100%;
+  }
+}
+
+.pack-name {
+  font-weight: 700;
+}
+
+.pack-price {
+  font-size: 24px;
+  margin: 8px 0;
+  color: @c-accent;
+}
+</style>

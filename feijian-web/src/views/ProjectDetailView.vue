@@ -1,7 +1,7 @@
 <template>
   <div v-if="project">
-    <el-card style="margin-bottom: 16px">
-      <div style="display: flex; justify-content: space-between; align-items: center">
+    <el-card class="block">
+      <div class="head">
         <div>
           <b style="font-size: 16px">{{ project.name }}</b>
           <el-tag style="margin-left: 8px" size="small">{{ project.status }}</el-tag>
@@ -10,8 +10,8 @@
       </div>
     </el-card>
 
-    <el-card style="margin-bottom: 16px" header="文件上传（PDF，≤100MB / ≤500页）">
-      <div style="display: flex; gap: 32px; flex-wrap: wrap">
+    <el-card class="block" header="文件上传（PDF，≤100MB / ≤500页）">
+      <div class="upload-row">
         <div>
           <div style="margin-bottom: 8px; color: #66707c">招标文件（tender）</div>
           <div style="display: flex; gap: 8px">
@@ -52,7 +52,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div style="margin-top: 16px; display: flex; gap: 12px">
+      <div class="actions">
         <el-button type="primary" @click="genChecklist">生成废标条款清单</el-button>
         <el-button type="danger" plain @click="startCompare">发起双文件对照（消耗 1 次）</el-button>
         <el-button @click="loadDocs">刷新状态</el-button>
@@ -155,3 +155,85 @@ onMounted(async () => {
 })
 onUnmounted(() => timer && clearInterval(timer))
 </script>
+
+<style scoped lang="less">
+.block {
+  margin-bottom: 16px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  @media (max-width: @bp-sm) {
+    flex-wrap: wrap;
+  }
+}
+
+.upload-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+
+  @media (max-width: @bp-md) {
+    gap: 16px;
+  }
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+
+  @media (max-width: @bp-sm) {
+    flex-wrap: wrap;
+
+    :deep(.el-button) {
+      margin-left: 0;
+    }
+  }
+}
+</style>
+
+<style scoped lang="less">
+.block {
+  margin-bottom: 16px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  @media (max-width: @bp-sm) {
+    flex-wrap: wrap;
+  }
+}
+
+.upload-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+
+  @media (max-width: @bp-md) {
+    gap: 16px;
+  }
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+
+  @media (max-width: @bp-sm) {
+    flex-wrap: wrap;
+
+    :deep(.el-button) {
+      margin-left: 0;
+    }
+  }
+}
+</style>
