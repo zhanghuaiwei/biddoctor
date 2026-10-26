@@ -45,7 +45,9 @@ jobs:
         working-directory: feijian-web
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4        # 版本读自 package.json packageManager 字段
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.9   # 与 feijian-web/package.json packageManager 一致（action 在 job 根目录读不到子目录字段）
       - uses: actions/setup-node@v4
         with:
           node-version: 20
