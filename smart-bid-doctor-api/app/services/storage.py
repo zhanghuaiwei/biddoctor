@@ -29,6 +29,8 @@ class LocalStorage:
 
     def __init__(self, root: str):
         self.root = root
+        # 存储根目录启动即确保存在：healthz 磁盘检查与首次保存都依赖它
+        os.makedirs(root, exist_ok=True)
 
     def _path_for(self, sha: str, ext: str) -> str:
         rel = os.path.join(sha[:2], sha[2:4], f"{sha}.{ext}")
