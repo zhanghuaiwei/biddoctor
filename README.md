@@ -8,113 +8,207 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/zhanghuaiwei/smart-bid-doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/zhanghuaiwei/smart-bid-doctor/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-MVP%20skeleton-blue)
-![Python](https://img.shields.io/badge/python-3.12+-informational)
+![Python](https://img.shields.io/badge/python-3.12%2B-informational)
 ![Vue](https://img.shields.io/badge/vue-3.x-42b883)
 
-**smart-bid-doctor** 只做中立的「检」，不做「写」：上传招标文件（PDF），自动抽取资格性/符合性/★号强制/报价/签章密封五类废标相关条款，生成结构化《废标风险检查清单》，每条结论附原文页码溯源；后续版本支持招标×投标双文件逐条对照与红黄绿分级报告。
+## 一、项目简介
 
-目录 `smart-bid-doctor-api` / `smart-bid-doctor-web` / `smart-bid-doctor-site` 与项目同名。
+**smart-bid-doctor** 只做中立的「检」，不做「写」：上传招标文件（PDF），自动抽取**资格性 / 符合性 / ★号强制 / 报价 / 签章密封**五类废标相关条款，生成结构化《废标风险检查清单》，每条结论附原文页码溯源；后续版本支持招标×投标双文件逐条对照与红黄绿分级报告。
 
-## 本次 MVP 边界（已确认）
+- 已完成与未开始功能的完整盘点（含实现方案）见 [MVP-TASKS.md](MVP-TASKS.md)
+- AI 编码工具的工程约定（分层/事务/留痕/测试范式）见 [AGENTS.md](AGENTS.md)
 
-**In（MVP 交付，对应设计分期 P0/M1，W1–2）**
-
-| # | 能力 | 状态 |
-|---|---|---|
-| 1 | 邮箱验证码登录（dev 固定码；prod 接 SMTP/Resend） | 骨架就绪 |
-| 2 | 检查项目 CRUD（免费 3 项目/月） | 骨架就绪 |
-| 3 | 招标 PDF 上传（魔数/加密/页数≤500/大小≤100MB 校验，sha256 去重） | 骨架就绪 |
-| 4 | 文档解析管线（PyMuPDF+pdfplumber 文本路径，扫描页 OCR 兜底） | 待 M1 接入（接口位 `app/engine/parser/`） |
-| 5 | 废标条款抽取（规则预筛 + GLM 结构化抽取 + 合并去重） | 待 M1 接入（`app/engine/extractor/`） |
-| 6 | 废标风险清单（五类条款、编号、原文引用+页码溯源、在线查看） | 待 M1 接入 |
-| 7 | 任务队列与状态机（PG SKIP LOCKED，进度轮询） | 骨架就绪 |
-| 8 | HTML 报告 + 浏览器打印导出 | 待 M1 接入 |
-
-**Out（本次不做）**
-
-- 投标文件上传与双文件对照检查（M2，W3–6；对照引擎接口位已留）
-- 按次付费/订单/人工核销（M3，W7–8；配额与订单 CRUD 骨架已就绪）
-- 医疗器械行业包（P2）、订阅与商户自助支付
-- 短信登录（个人主体短信通道不可用，`users.phone` 已留列）
-- Word/OFD 原生解析（Word 先经 LibreOffice 转 PDF）
-- 评标辅助、围标串标检测（法律风险，明确 Out）
-
-## 文档
-
-完整设计文档（01-系统概要设计 / 02-详细设计 / 03-数据库设计 / 04-架构设计 / 市场调研）为内部资料，**不随本开源库发布**。本 README + 代码内注释 + OpenAPI 文档（`/api/docs`）已覆盖开源协作所需信息。
-
-关键设计决策摘要：
+## 二、技术选型
 
 | 项 | 选定 | 备选与切换成本 |
 |---|---|---|
 | 大模型 | 智谱 GLM（重/轻两档，版本进配置）；OpenAI 兼容 Provider 抽象 | DeepSeek/Qwen：改 base_url + 配置 |
 | 文档解析 | PyMuPDF + pdfplumber + PaddleOCR（独立可选安装） | MinerU / TextIn：替换 Parser 实现类 |
-| 后端 | Python 3.12 + FastAPI + SQLAlchemy 2 + Alembic | — |
-| 前端 | Vue 3 + Vite + TypeScript + Element Plus（SPA，pnpm + less + 响应式）＋ 静态落地页（nginx 直出） | — |
+| 后端 | Python 3.12+ · FastAPI · SQLAlchemy 2 · Alembic · Pydantic v2 | — |
+| 前端 | Vue 3 + Vite 5 + TypeScript + Element Plus（SPA，pnpm + less）＋ 静态落地页（nginx 直出） | — |
 | 数据库 | PostgreSQL 16 + pgvector（1024 维）+ pg_trgm | — |
-| 任务队列 | PostgreSQL `SKIP LOCKED` 任务表（不引入 Redis） | 量大后换 arq/celery |
+| 任务队列 | PostgreSQL `SKIP LOCKED` 任务表（不引入 Redis/Celery） | 量大后换 arq/celery |
 | 部署 | 单机 Docker Compose（2C4G 起步） | 跑通后迁国内云 |
 | 对象存储 | 本地磁盘 sha256 寻址 + 去重（接口已抽象） | 二期换 OSS/S3 |
 | 登录认证 | 邮箱验证码（Resend/SMTP 自选），JWT 7 天 | 主体注册后加手机号二通道 |
 
-## 代码仓库结构
+依赖版本策略：后端 `requirements.txt` **精确 pin（`==`）**，升级 = 改版本 → 集成测试全绿 → CI 绿 → 合并；前端版本锁在 `package.json` 的 `packageManager` 字段。
+
+## 三、架构选型
+
+**单机单库一体化**：队列（SKIP LOCKED）、向量检索（pgvector HNSW）、模糊文本检索（pg_trgm）、审计与账本全部落在 PostgreSQL 一个实例内，不引入 Redis / Celery / ES / 独立向量库——以最小运维面支撑 MVP，各组件均为接口抽象，量大可平滑替换。
+
+```
+请求链路（同步）：
+浏览器 ──HTTPS──▶ nginx（静态 SPA/落地页 + /api 反代，透传真实 IP）
+                    │
+                    ▼
+          FastAPI api 层（薄：参数校验 + 编排 + 审计，禁直接 ORM）
+                    ▼
+          services 层（事务边界：commit/rollback/行锁都在这里）
+                    ▼
+          engine 层（纯函数，M1/M2 接入）      PostgreSQL 16（12 张表）
+
+任务链路（异步）：
+api 建任务（与业务同事务，只 flush）──▶ worker runner
+   SKIP LOCKED 认领（原子置 running）→ handler 执行 → 心跳 30s
+   失败退避重试（≤3）→ 超时回收 → 状态机 pending→running→succeeded/failed/need_review/cancelled
+```
+
+横切机制（全站生效，实现见代码内 docstring）：统一错误体 `{"error":{code,message}}` + 错误码 AST 守卫、枚举双端注册表、滑动窗口限流（真实客户端 IP 分桶）、审计留痕独立事务、`request_id` 贯穿 api→worker 四链互查（audit_logs ↔ tasks ↔ llm_calls ↔ 结构化日志）、软删约定与越权 404 防护。
+
+## 四、目录结构
 
 ```
 smart-bid-doctor/
-├── AGENTS.md        # AI 编码工具工程约定（分层/事务/留痕/测试范式，所有 Agent 必读）
-├── smart-bid-doctor-api/     # FastAPI 后端：core(配置/枚举/错误码注册表)/models/schemas/services/api 分层
-│                    #   + worker 任务执行器（SKIP LOCKED）+ alembic 迁移
-│                    #   app/engine/（解析/抽取/对照/报告）与 app/llm/（Provider）为接口占位
-├── smart-bid-doctor-web/     # Vue3 + Vite + Element Plus 应用 SPA（登录/项目/上传/清单/次数订单）
-│                    #   src/api（统一请求层）+ components + composables + constants（枚举/SKU 归口）
-├── smart-bid-doctor-site/    # 静态落地页（nginx 直出，保搜索引擎收录）
-├── deploy/          # 生产 nginx 配置（静态前端 + /api 反代）
-└── LICENSE          # MIT
+├── AGENTS.md                  # AI 编码工具工程约定（唯一规则源，所有 AI/人必读）
+├── MVP-TASKS.md               # 功能盘点：已完成/未开始 + 实现方案与验收门槛
+├── CLAUDE.md · .cursor/ · .trae/   # 各 AI 工具薄转发入口（一律指向 AGENTS.md，不复制规则）
+├── docker-compose.prod.yml    # 生产编排：nginx + api + worker + db
+├── deploy/
+│   └── nginx.conf             # 生产 nginx：静态前端 + /api 反代 + 真实 IP 还原
+│
+├── smart-bid-doctor-api/      # ── FastAPI 后端 ──
+│   ├── app/
+│   │   ├── main.py            # 应用装配：路由/中间件/统一异常/启动校验
+│   │   ├── core/              # 横切底座
+│   │   │   ├── config.py      #   Settings（FJ_ 前缀；prod fail-fast 校验强密钥）
+│   │   │   ├── enums.py       #   枚举注册表（状态机/角色/类型，与前端 enums.ts 同步）
+│   │   │   ├── errors.py      #   统一错误体 + 错误码注册表（AST 测试守卫）
+│   │   │   ├── security.py    #   JWT 签发/验签（HS256 白名单，防 alg 混淆）
+│   │   │   ├── deps.py        #   依赖注入：鉴权/分页/client_ip/限流
+│   │   │   ├── ratelimit.py   #   滑动窗口限流器
+│   │   │   ├── db.py          #   引擎/会话（pool_pre_ping）
+│   │   │   └── logging.py     #   结构化 JSON 日志（request_id 贯穿）
+│   │   ├── models/            # ORM 模型（DDL 唯一来源，12 张表 → alembic 迁移）
+│   │   ├── schemas/           # Pydantic 请求/响应契约（全端点 response_model）
+│   │   ├── api/               # 路由层（薄；禁直接 ORM，唯一例外 healthz）
+│   │   │   ├── auth.py        #   验证码/登录（防爆破锁定）
+│   │   │   ├── projects.py    #   项目 CRUD / PDF 上传 / 解析进度
+│   │   │   ├── check.py       #   清单/对照/报告（报告生成与导出为 501 桩）
+│   │   │   ├── billing.py     #   配额查询 / 订单 / 管理员核销
+│   │   │   ├── tasks.py       #   任务查询（前端轮询兜底）
+│   │   │   └── internal.py    #   healthz / 运营 metrics（内部令牌双通道）
+│   │   ├── services/          # 业务层（事务边界；11 个 service）
+│   │   │   ├── auth_svc.py    #   验证码（原子消费）/ 登录 / 防爆破
+│   │   │   ├── project_svc.py / document_svc.py   # 项目与文档（上传校验/去重）
+│   │   │   ├── check_svc.py / compare_svc.py      # 清单/对照/报告查询与发起
+│   │   │   ├── quota_svc.py / billing_svc.py      # 免费配额（行锁）/ 订单核销
+│   │   │   ├── task_svc.py / audit_svc.py / metrics_svc.py / storage.py
+│   │   ├── engine/            # 业务引擎占位（M1/M2 接入；TODO 含推荐方案+实现过程）
+│   │   │   ├── parser/        #   PDF 解析管线（TODO M1/B1–B4）
+│   │   │   ├── extractor/     #   废标条款抽取（TODO M1/C1–C3，MVP 核心难点）
+│   │   │   ├── comparator/    #   双文件对照（TODO M2）
+│   │   │   └── report/        #   报告渲染（TODO M1/D2–D3）
+│   │   ├── llm/               # Provider 抽象 + 智谱实现（M1 接入）+ token 预算
+│   │   └── worker/            # 任务执行器
+│   │       ├── runner.py      #   SKIP LOCKED 认领 / 退避重试 / 超时回收
+│   │       ├── heartbeat.py   #   running 任务心跳（30s）
+│   │       └── handlers/      #   parse/extract/embed/checklist/compare + purge（硬删唯一入口）
+│   ├── alembic/               # 数据库迁移（只加不删）
+│   ├── scripts/               # bootstrap / seed_admin / backup / restore_backup / daily_report
+│   ├── tests/                 # 单测（无需 DB）+ 集成测试（FJ_TEST_DATABASE_URL）
+│   ├── docker-compose.yml     # dev 编排（通常只起 db：pgvector/pgvector:pg16）
+│   └── Makefile               # 常用命令（见 §七）
+│
+├── smart-bid-doctor-web/      # ── Vue3 SPA（pnpm）──
+│   └── src/
+│       ├── api/               # 统一请求层：client（错误体解析/超时/401 回跳带 redirect）+ 资源模块
+│       ├── components/        # QuotaBadge（配额徽标）/ UploadSlot（上传槽）
+│       ├── composables/       # useAuth / usePolling（终态自停）/ useCountdown（卸载清理）
+│       ├── constants/         # enums.ts / skus.ts / storage.ts（枚举/SKU/键归口）
+│       ├── utils/             # format.ts（金额按 Decimal 契约以字符串展示）
+│       └── views/             # Login / Projects / ProjectDetail（工作台）/ Quota
+│
+├── smart-bid-doctor-site/     # 静态落地页（nginx 直出，保搜索引擎收录）
+└── LICENSE                    # MIT
 ```
 
-已实现（非业务骨架）：邮箱验证码登录、项目 CRUD（含 status 过滤与分页）、PDF 上传校验（流式接收，边收边算 sha256/大小）、任务创建与状态查询、统一错误体（错误码注册表代码化 + AST 测试守卫）、业务枚举注册表（后端 `core/enums.py` ↔ 前端 `constants/enums.ts`）、健康检查与内部指标、结构化 JSON 日志、软删约定、越权 404 防护、反代真实客户端 IP 还原（限流/审计/防爆破同口径）。
-业务桩：清单生成/报告导出端点返回 501，parse/extract/embed/checklist/compare handler 只推进任务状态，LLM Provider 为接口占位（模型名/base_url 进配置）。
+## 五、版本要求
 
-## 快速上手
+| 依赖 | 版本 | 说明 |
+|---|---|---|
+| Python | **3.12+** | 依赖精确 pin 于 `smart-bid-doctor-api/requirements.txt` |
+| PostgreSQL | **16**（含 pgvector、pg_trgm 扩展） | dev 镜像 `pgvector/pgvector:pg16` |
+| Node.js | **≥ 18** | Vite 5 要求 |
+| pnpm | **10.34.9**（`packageManager` 锁定） | `corepack enable pnpm` 启用；禁混用 npm |
+| Docker | Docker Engine + Compose v2 | dev 起 db；prod 全栈 |
+
+## 六、快速启动（开发环境）
 
 ```bash
-# 后端（首次）
+# ── 后端（首次）──
 cd smart-bid-doctor-api
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-docker compose up -d db                # 起 PostgreSQL(pgvector)
-.venv/bin/python scripts/bootstrap.py  # 建扩展+迁移（生产同样执行本脚本）
-.venv/bin/uvicorn app.main:app --reload          # API :8000，文档 /api/docs
-.venv/bin/python -m app.worker.runner            # 任务执行器（另开终端）
+cp .env.example .env                  # 按需修改（dev 默认即可跑）
+docker compose up -d db               # 起 PostgreSQL(pgvector)
+.venv/bin/python scripts/bootstrap.py # 建扩展 + 迁移（生产同样执行本脚本）
+.venv/bin/uvicorn app.main:app --reload         # API :8000，OpenAPI 文档 /api/docs
+.venv/bin/python -m app.worker.runner           # 任务执行器（另开终端）
 
-# 测试（集成测试需要 PostgreSQL + pgvector，通过 FJ_TEST_DATABASE_URL 提供）
-.venv/bin/python -m pytest tests -q
-.venv/bin/ruff check app tests scripts   # lint
+# ── 前端 ──
+cd smart-bid-doctor-web
+corepack enable pnpm                  # 首次
+pnpm install
+pnpm dev                              # :5173，/api 代理到 8000
 
-# 前端（pnpm，版本见 package.json packageManager；corepack enable pnpm 启用）
-cd smart-bid-doctor-web && pnpm install
-pnpm build        # vite build + vue-tsc 类型门禁
-pnpm dev          # :5173，/api 代理到 8000
-# 落地页：smart-bid-doctor-site/index.html 静态部署即可
+# ── 落地页 ──
+# smart-bid-doctor-site/index.html 静态部署即可
 
 # dev 环境登录验证码固定为 123456（FJ_ENV=dev）
 ```
 
-运维（`smart-bid-doctor-api/` 下，与 03/04 设计文档对应）：
+## 七、常用命令
+
+后端（`smart-bid-doctor-api/` 下）：
+
+| 命令 | 作用 |
+|---|---|
+| `make bootstrap` | 初始化库（扩展 + alembic head） |
+| `make test` | 单测 + 冒烟（不需要数据库） |
+| `make test-int` | 全量测试（需 `FJ_TEST_DATABASE_URL` 指向独立测试库） |
+| `make lint` / `make fmt` | ruff 检查 / 自动修复（提交前必须全绿） |
+| `make seed-admin EMAIL=x@y.com` | 创建/提升管理员 |
+| `make backup` | pg_dump 备份，保留 14 天（crontab 03:30） |
+| `make restore-backup FILE=xxx.dump` | 恢复演练（落独立库，不动线上） |
+| `make daily-report` | 每日业务自查报表（crontab 08:00） |
+
+前端（`smart-bid-doctor-web/` 下）：`pnpm dev`（开发）· `pnpm build`（vite build + vue-tsc 类型门禁）· `pnpm typecheck`。
+
+## 八、配置说明
+
+配置经环境变量注入，前缀 `FJ_`，全部键与 `app/core/config.py` Settings 一一对应（全清单见 [`smart-bid-doctor-api/.env.example`](smart-bid-doctor-api/.env.example)）。生产经部署平台注入，勿提交 `.env`。
+
+| 键 | 默认/示例 | 说明 |
+|---|---|---|
+| `FJ_ENV` | `dev` \| `prod` | prod 启动强制校验强密钥与内部令牌（fail-fast） |
+| `FJ_DATABASE_URL` | `postgresql+psycopg://...` | 主库连接串 |
+| `FJ_JWT_SECRET` / `FJ_JWT_EXPIRE_DAYS` | — / `7` | prod：≥32 字符强随机 |
+| `FJ_INTERNAL_TOKEN` | 空 | prod 必填；空则 `/internal/*` 回退管理员 Bearer |
+| `FJ_UPLOAD_DIR` / `FJ_MAX_UPLOAD_MB` / `FJ_MAX_PAGES` | `./data/uploads` / `100` / `500` | 上传目录与限制 |
+| `FJ_FREE_PROJECTS_PER_MONTH` | `3` | 每账号每月免费项目数 |
+| `FJ_CORS_ORIGINS` | `http://localhost:5173` | 逗号分隔；prod 禁止 `*` |
+| `FJ_RATE_LIMIT_PER_MIN` | `120` | 每账号+IP 每分钟，0=关闭 |
+| `FJ_DEV_FIXED_CODE` | `123456` | 仅 dev 生效的固定验证码 |
+| `FJ_SKU_CATALOG` | JSON | 商品价目（订单 SKU 取值域由此驱动） |
+| `FJ_ZHIPU_API_KEY` / `FJ_ZHIPU_BASE_URL` | — / 智谱 v4 | M1 接入 LLM 时配置（OpenAI 兼容） |
+| `FJ_LLM_MODEL_HEAVY` / `FJ_LLM_MODEL_LIGHT` | `glm-4.6` / `glm-4.5-flash` | 重任务（抽取/判定）/ 轻任务（分类/兜底） |
+| `FJ_TEST_DATABASE_URL` | — | 集成测试独立库（仅本地/CI 用） |
+
+## 九、生产部署
 
 ```bash
-make bootstrap        # 初始化库（扩展+迁移）
-make seed-admin EMAIL=ops@example.com   # 管理员账号（03 §4）
-make daily-report     # 每日业务自查报表（04 §6，crontab 08:00）
-make backup           # pg_dump 备份，保留 14 天（03 §6，crontab 03:30）
-make restore-backup FILE=/data/backups/xxx.dump   # 恢复演练（独立库）
+# 根目录 docker-compose.prod.yml：nginx + api + worker + db 完整拓扑，secrets 经 .env 注入
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-生产部署用 `docker-compose.prod.yml`（nginx + api + worker + db 完整拓扑，secrets 经 .env 注入）；
-任务执行器内置每日数据生命周期清理（type=purge，03 §5）与 running 任务心跳（02 §8）。
+nginx 配置见 [`deploy/nginx.conf`](deploy/nginx.conf)（静态前端 + `/api` 反代 + 真实客户端 IP 透传，uvicorn 另开 `--proxy-headers`）。任务执行器内置每日数据生命周期清理（type=purge）与 running 任务心跳。
 
-配置经环境变量注入（前缀 `FJ_`，全键清单见 `smart-bid-doctor-api/.env.example`，与 `app/core/config.py` Settings 一一对应，如 `FJ_DATABASE_URL` / `FJ_JWT_SECRET` / `FJ_UPLOAD_DIR` / `FJ_ZHIPU_API_KEY`）；prod 环境启动强制校验强密钥与内部令牌。
+## 十、项目说明
 
-## 里程碑
+- **工程约定**：[AGENTS.md](AGENTS.md) 是所有 AI 编码工具（WorkBuddy / Codex / opencode / Trae / Claude Code / Cursor 等）的唯一规则源——分层、事务、审计留痕、错误码、软删、安全基线均在其中代码化，并有测试守卫。
+- **设计文档**：01-系统概要设计 / 02-详细设计 / 03-数据库设计 / 04-架构设计为内部资料，**不随本开源库发布**；本 README + 代码内注释 + OpenAPI（`/api/docs`）已覆盖开源协作所需信息。代码内详细实现说明见各模块 docstring，未开始功能的实现方案见桩内 TODO 块。
+- **里程碑**：
 
 | 阶段 | 时间 | 交付 | 门槛 |
 |---|---|---|---|
@@ -123,9 +217,13 @@ make restore-backup FILE=/data/backups/xxx.dump   # 恢复演练（独立库）
 | M3 付费 | W7–8 | 按次收费（人工核销） | 免费转付费 ≥5% |
 | M4 垂直 | Q2 | 医疗器械偏离表专项 + 订阅 | 器械客户复购 ≥30% |
 
-## 免责声明
+- **当前 MVP 边界**：已完成（登录/项目/上传/队列/订单/平台机制）与未开始（解析/抽取/清单报告/对照/上线）逐项盘点见 [MVP-TASKS.md](MVP-TASKS.md)。明确不做：评标辅助与围标串标检测（法律风险）、多租户、在线支付自动核销、短信登录（列已留）、Word/OFD 原生解析（经 LibreOffice 转 PDF）。
 
-smart-bid-doctor 输出为**辅助人工复核工具**，不构成任何「保证不废标」承诺；每条结论均附原文出处，高危项须人工确认。使用者应遵守所在采购项目的保密与合规要求。
+## 十一、声明
+
+**免责声明**：smart-bid-doctor 输出为**辅助人工复核工具**，不构成任何「保证不废标」承诺；每条结论均附原文出处，高危项须人工确认。使用者应遵守所在采购项目的保密与合规要求，不得将本工具用于评标辅助、围标串标等违法违规用途。
+
+**隐私与数据**：上传文件仅用于本次检查；原件与解析产物按留存策略（默认 30 天）自动清理，报告支持阅后即焚。
 
 ## License
 
