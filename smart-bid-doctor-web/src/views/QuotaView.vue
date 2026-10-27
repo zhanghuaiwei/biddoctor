@@ -2,7 +2,7 @@
      （与后端 FJ_SKU_CATALOG 同源），下单走 billing 资源模块，支付为人工核销引导文案。 -->
 <template>
   <div class="page">
-    <el-card class="block" header="我的次数">
+    <el-card class="block lift-card" header="我的次数">
       <p>本月免费项目额度剩余：<b>{{ quota.free_left }}</b> 个</p>
       <div v-for="p in quota.packs" :key="p.id" class="pack-line">
         次数包 {{ skuTitle(p.type) }}：剩余 <b>{{ p.remain }}</b> 次
@@ -11,7 +11,7 @@
       <el-empty v-if="!quota.packs.length" description="暂无次数包" :image-size="50" />
     </el-card>
 
-    <el-card class="block" header="购买次数包（人工收款）">
+    <el-card class="block lift-card" header="购买次数包（人工收款）">
       <div class="packs">
         <el-card v-for="s in SKUS" :key="s.code" shadow="never" class="pack">
           <div class="pack-name">{{ s.title }}</div>
@@ -21,7 +21,7 @@
       </div>
     </el-card>
 
-    <el-card header="我的订单">
+    <el-card class="lift-card" header="我的订单">
       <el-table :data="orders">
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column label="商品" width="160">
@@ -112,9 +112,26 @@ onMounted(load)
 
 .pack {
   width: 260px;
+  border: 1px solid @c-line;
+  // 商品卡悬停：抬升 + 阴影，强化可点击感
+  transition:
+    transform @dur-base @ease-out,
+    box-shadow @dur-base @ease-out,
+    border-color @dur-base @ease-out;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: @shadow-md;
+    border-color: tint(@c-accent, 60%);
+  }
 
   @media (max-width: @bp-sm) {
     width: 100%;
+
+    // 触屏无悬停，去掉抬升避免粘滞态
+    &:hover {
+      transform: none;
+    }
   }
 }
 

@@ -82,6 +82,11 @@ async function login() {
   background: #fff;
   padding: 40px;
   border-radius: @radius;
+  box-shadow: @shadow-lg;
+  // 品牌识别：顶部强调条
+  border-top: 3px solid @c-accent;
+  // 首屏进场：上浮淡入（配合路由 page 过渡，双层节奏更丝滑）
+  animation: rise-in @dur-slow @ease-out both;
 
   @media (min-width: @bp-sm) {
     margin: 12vh auto;
@@ -89,6 +94,9 @@ async function login() {
 
   @media (max-width: @bp-sm) {
     padding: 24px 20px;
+    // 移动端去掉顶部条与阴影，避免小屏厚重感
+    border-top: none;
+    box-shadow: @shadow-sm;
   }
 }
 
@@ -104,5 +112,6 @@ async function login() {
 
 .submit {
   width: 100%;
+  margin-top: 8px;
 }
 </style>

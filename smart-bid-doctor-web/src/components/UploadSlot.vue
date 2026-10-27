@@ -5,18 +5,23 @@
   <div class="upload-slot">
     <div class="slot-title">{{ title }}</div>
     <div class="slot-row">
+      <!-- 点击选区：原生 file input 隐藏保留（可访问性 aria-label），整区可点击 -->
+      <button type="button" class="slot-zone" :class="{ 'has-file': !!fileName }" @click="input?.click()">
+        <span class="zone-main">{{ fileName || '点击选择 PDF 文件' }}</span>
+        <span class="zone-hint">PDF · ≤{{ MAX_UPLOAD_MB }}MB</span>
+      </button>
       <input
         ref="input"
         class="file-input"
         type="file"
         accept="application/pdf"
         :aria-label="`选择${title}（PDF）`"
+        @change="onPick"
       />
-      <el-button size="small" type="primary" plain :loading="uploading" @click="onUpload">
+      <el-button size="small" type="primary" plain :loading="uploading" :disabled="!fileName" @click="onUpload">
         上传
       </el-button>
     </div>
-    <div class="slot-hint">PDF · ≤{{ MAX_UPLOAD_MB }}MB</div>
   </div>
 </template>
 
@@ -38,6 +43,11 @@ const emit = defineEmits<{ uploaded: [] }>()
 
 const input = ref<HTMLInputElement>()
 const uploading = ref(false)
+const fileName = ref('')
+
+function onPick() {
+  fileName.value = input.value?.files?.[0]?.name ?? ''
+}
 
 async function onUpload() {
   const file = input.value?.files?.[0]
@@ -55,12 +65,19 @@ async function onUpload() {
     notifyApiError(e, '上传失败')
   } finally {
     uploading.value = false
+    fileName.value = ''
     if (input.value) input.value.value = ''
   }
 }
 </script>
 
 <style scoped lang="less">
+// 工作台 upload-row 内两槽均分一行，窄屏随父级 flex-wrap 折行铺满
+.upload-slot {
+  flex: 1;
+  min-width: 260px;
+}
+
 .slot-title {
   margin-bottom: 8px;
   color: @c-text-sub;
@@ -69,19 +86,63 @@ async function onUpload() {
 .slot-row {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: stretch;
 }
 
-// 原生 file input 样式收敛（可访问性：保留 aria-label）
+// 点击选区：虚线框 + 悬停提亮，选中后显示文件名
+.slot-zone {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px dashed @c-line;
+  border-radius: @radius - 2px;
+  background: #fafbfc;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition:
+    border-color @dur-base @ease-out,
+    background-color @dur-base @ease-out;
+
+  &:hover {
+    border-color: tint(@c-primary, 40%);
+    background: tint(@c-bg, 40%);
+  }
+
+  &.has-file {
+    border-style: solid;
+    border-color: tint(@c-primary, 40%);
+
+    .zone-main {
+      color: @c-text;
+    }
+  }
+}
+
+.zone-main {
+  font-size: 13px;
+  color: @c-text-sub;
+  // 长文件名省略，防撑破布局
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zone-hint {
+  font-size: 12px;
+  color: @c-text-sub;
+}
+
+// 原生 input 视觉隐藏但保留在 DOM（aria-label + change 事件）
 .file-input {
-  font-size: 12px;
-  color: @c-text-sub;
-  max-width: 220px;
-}
-
-.slot-hint {
-  margin-top: 6px;
-  font-size: 12px;
-  color: @c-text-sub;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 </style>

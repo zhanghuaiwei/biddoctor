@@ -1,11 +1,19 @@
 // 全局基础样式（less）；变量经 vite additionalData 自动注入（variables.less）
 @import (reference) './variables.less';
 
+// Element Plus 全局基调微调：圆角对齐设计令牌
+:root {
+  --el-border-radius-base: @radius - 2px;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background: @c-bg;
   color: @c-text;
+  // 字体渲染优化：抗锯齿 + 连字，长文表格更清晰
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 // 全局响应式基础：容器流式 + 弹性元素防溢出（view 级细排布在各组件内）
@@ -23,4 +31,74 @@ img,
 video {
   max-width: 100%;
   height: auto;
+}
+
+// ---- 路由切换动画（App.vue / MainLayout.vue 的 <transition name="page"> 使用） ----
+// 进场：淡入 + 轻微上浮；出场：快速淡出。mode="out-in" 保证先出后进不抖动。
+.page-enter-active {
+  transition:
+    opacity @dur-base @ease-out,
+    transform @dur-base @ease-out;
+}
+
+.page-leave-active {
+  transition: opacity @dur-fast ease-in;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+}
+
+// 进场强调动画（登录卡等首屏元素，配合 animation 使用）
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ---- 卡片悬停动效：阴影加深 + 边框提亮（视图在 el-card 上加 class="lift-card"） ----
+.lift-card.el-card {
+  transition:
+    box-shadow @dur-base @ease-out,
+    border-color @dur-base @ease-out;
+
+  &:hover {
+    box-shadow: @shadow-md;
+    border-color: tint(@c-primary, 78%);
+  }
+}
+
+// 键盘可达性：保留可见焦点环（Element Plus 组件内部焦点样式优先级更高，不受影响）
+:focus-visible {
+  outline: 2px solid fade(@c-primary, 55%);
+  outline-offset: 2px;
+}
+
+// 细滚动条：减少长表格/抽屉滚动时的视觉侵占
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(16, 24, 40, 0.18);
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(16, 24, 40, 0.3);
+  }
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }

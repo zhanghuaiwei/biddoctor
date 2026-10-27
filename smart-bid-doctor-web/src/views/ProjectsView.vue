@@ -2,7 +2,7 @@
      新建（免费配额 402 时提示）+ 软删（不释放当月名额）。入口经 api/projects.ts 资源模块。 -->
 <template>
   <div class="page">
-    <el-card>
+    <el-card class="lift-card">
       <div class="head">
         <span class="head-title">检查项目</span>
         <el-button type="primary" @click="dialog = true">新建项目</el-button>

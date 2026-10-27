@@ -4,7 +4,7 @@
      接入前清单生成/导出为 501，前端按 NOT_IMPLEMENTED 错误码提示）。 -->
 <template>
   <div class="page" v-if="project">
-    <el-card class="block">
+    <el-card class="block lift-card">
       <div class="head">
         <div>
           <b class="proj-name">{{ project.name }}</b>
@@ -16,14 +16,14 @@
       </div>
     </el-card>
 
-    <el-card class="block" :header="`文件上传（PDF，≤${MAX_UPLOAD_MB}MB / ≤${MAX_PAGES}页）`">
+    <el-card class="block lift-card" :header="`文件上传（PDF，≤${MAX_UPLOAD_MB}MB / ≤${MAX_PAGES}页）`">
       <div class="upload-row">
         <UploadSlot :project-id="pid" role="tender" title="招标文件（tender）" @uploaded="onUploaded" />
         <UploadSlot :project-id="pid" role="bid" title="投标文件（bid）" @uploaded="onUploaded" />
       </div>
     </el-card>
 
-    <el-card class="block" header="已上传文件">
+    <el-card class="block lift-card" header="已上传文件">
       <el-table :data="docs">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="类型" width="100">
@@ -55,7 +55,7 @@
       </div>
     </el-card>
 
-    <el-card header="废标条款清单">
+    <el-card class="lift-card" header="废标条款清单">
       <template #header>
         <div class="checklist-head">
           <span>废标条款清单</span>
@@ -281,7 +281,7 @@ onMounted(init)
 }
 
 .warn-text {
-  color: #909399;
+  color: @c-text-sub;
   font-size: 12px;
 }
 
