@@ -21,6 +21,11 @@ def _gen_order_no() -> str:
 
 
 def create_order(db: Session, user_id: int, sku: str, note: str | None) -> Order:
+    """创建待核销订单：SKU 目录来自配置（单一事实来源），金额 Decimal 落库。
+
+    order_no 撞号走 IntegrityError 重试（唯一约束兜底，最多 3 次）；
+    审计留痕（ORDER_CREATED）由 api 层在事务外写，此处不掺审计职责。
+    """
     skus = get_settings().skus
     if sku not in skus:
         raise AppError(400, "BAD_SKU", "不存在的商品")
@@ -44,6 +49,7 @@ def create_order(db: Session, user_id: int, sku: str, note: str | None) -> Order
 
 
 def list_orders(db: Session, user_id: int, *, limit: int = 20, offset: int = 0) -> tuple[list[Order], int]:
+    """本人订单分页（统一 limit/offset，上限 100）。"""
     q = db.query(Order).filter(Order.user_id == user_id)
     total = q.count()
     return (
@@ -53,6 +59,7 @@ def list_orders(db: Session, user_id: int, *, limit: int = 20, offset: int = 0) 
 
 
 def get_by_order_no(db: Session, order_no: str) -> Order | None:
+    """按订单号查单（核销入口用；None 语义由 api 层转 404）。"""
     return db.query(Order).filter(Order.order_no == order_no).first()
 
 

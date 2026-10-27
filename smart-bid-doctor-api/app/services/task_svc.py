@@ -31,6 +31,7 @@ def display_progress(task: Task | None, parse_status: str) -> int:
 
 
 def get_owned(db: Session, task_id: int, user_id: int) -> Task | None:
+    """任务归属校验：经 project join 限定本人项目，软删项目任务一并不可见。"""
     from app.models import Project
 
     return (
@@ -42,6 +43,7 @@ def get_owned(db: Session, task_id: int, user_id: int) -> Task | None:
 
 
 def latest_for_document(db: Session, document_id: int, type_: str = TaskType.PARSE) -> Task | None:
+    """某文档某类型最近一次任务（解析进度展示用；M1 起按 extract/checklist 复用）。"""
     return (
         db.query(Task)
         .filter(Task.document_id == document_id, Task.type == type_)

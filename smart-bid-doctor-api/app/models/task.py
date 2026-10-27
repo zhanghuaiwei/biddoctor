@@ -1,3 +1,12 @@
+"""异步任务与 LLM 调用账本（03 §2.5 tasks / llm_calls）。
+
+- Task：PG SKIP LOCKED 队列的状态载体——idx_tasks_claim 部分索引只覆盖 pending，
+  认领 SQL（worker/runner.py CLAIM_SQL）单条 UPDATE 原子置 running；heartbeat_at
+  由心跳线程每 30s 刷新，超时回收见 runner.recover_stale（02 §8）；
+- LlmCall：成本记账（M1 起）——每次 LLM 调用落一行（token 用量/成本/时延），
+  metrics 聚合与 daily_report 出成本（04 §6），365 天保留（purge）。
+"""
+
 from datetime import datetime
 from decimal import Decimal
 

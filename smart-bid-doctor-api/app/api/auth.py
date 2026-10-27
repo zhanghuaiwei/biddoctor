@@ -1,3 +1,10 @@
+"""认证接口（02 §9.1）：POST /auth/email-code、POST /auth/login。
+
+api 层职责边界：只做参数接收（Pydantic 校验）→ 调 auth_svc → 审计留痕 → 组装响应，
+**禁直接 ORM 查询**。IP 一律取 `deps.client_ip`（登录防爆破与审计同口径）；
+JWT 签发在 api 层完成（登录成功即发 token，7 天有效期见 core/security.py）。
+"""
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 

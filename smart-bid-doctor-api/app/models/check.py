@@ -1,3 +1,13 @@
+"""检查结论域模型（03 §2.6–2.9 check_items / comparisons / findings / reports）。
+
+- CheckItem：抽取出的五类废标条款（code 如 STAR-007，(project_id, code) 唯一防重），
+  附原文 raw_text + ref_page 页码溯源 + confidence；
+- Comparison：招标×投标双文件对照一次执行；order_id 无 FK（免费/邀测不计订单）；
+- Finding：逐条对照判定（verdict 四值，不确定一律 uncertain 绝不输出「满足」），
+  level 红黄绿给报告分级；
+- Report：报告渲染产物（report_data JSONB 快照 + html_path 落盘文件）。
+"""
+
 from datetime import datetime
 from decimal import Decimal
 

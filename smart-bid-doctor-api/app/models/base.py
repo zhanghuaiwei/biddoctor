@@ -1,3 +1,11 @@
+"""模型公共基类与 Mixin（03 §2.1 公共约定）。
+
+- PkMixin：BigInteger Identity 主键（分布式不依赖，迁移只加不删的前提下够用）；
+- UuidMixin：对外暴露的非递增标识（防 ID 遍历探测），gen_random_uuid() 服务端生成；
+- TimestampMixin：created_at 全部 TIMESTAMPTZ + server_default（时间范式见 AGENTS.md）；
+- EMBED_DIM：pgvector 维度常量，与迁移、03 数据库设计三处同步。
+"""
+
 import uuid as _uuid
 from datetime import datetime
 

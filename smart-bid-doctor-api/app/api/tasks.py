@@ -1,3 +1,9 @@
+"""任务查询接口（02 §9.6）：GET /tasks/{id}，前端轮询解析/对照进度的兜底入口。
+
+任务本身由 service 层在业务事务内创建（task_svc.create 只 flush）、由 worker
+执行（worker/runner.py SKIP LOCKED 认领）；api 层只读 + 归属校验。
+"""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

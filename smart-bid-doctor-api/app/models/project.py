@@ -1,3 +1,10 @@
+"""检查项目（03 §2.3 projects）。
+
+status 状态机（02 §8）：draft → tender_parsing → checklist_ready → comparing →
+report_ready（archived 由软删置位）；免费配额计数含软删项目（软删不释放当月名额，
+quota_svc.free_left），retain_until 驱动 purge 生命周期任务（03 §5）。
+"""
+
 from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, text

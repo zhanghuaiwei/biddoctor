@@ -1,3 +1,10 @@
+"""审计日志（03 §2.12 audit_logs）：人为操作留痕，与业务事务解耦。
+
+写入统一走 audit_svc.log（独立事务、失败不阻断主业务、自动附带 request_id）；
+INET 强类型列写入前经 _safe_ip 校验（非法值归 NULL）；detail JSONB 存业务上下文，
+`detail.request_id` ↔ 响应头 X-Request-ID ↔ tasks ↔ 结构化日志四链互查。
+"""
+
 from sqlalchemy import BigInteger, Index, String
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column

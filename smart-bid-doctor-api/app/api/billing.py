@@ -1,3 +1,10 @@
+"""配额 / 订单接口（02 §9.5）：次数包购买（人工核销）与免费额度查询。
+
+流程：用户下单（pending，返回 PAY_HINT 收款提示）→ 线下转账 → 管理员核销（grant，
+订单状态 + 发放次数包同一事务）→ `quota_accounts.remain` 增加。
+金额一律 Decimal（JSON 输出字符串）；下单与核销均写审计留痕。
+"""
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 

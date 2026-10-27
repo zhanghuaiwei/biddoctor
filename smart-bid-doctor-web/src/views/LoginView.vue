@@ -1,3 +1,6 @@
+<!-- 登录页（02 §9.1）：邮箱验证码登录。
+     流程：发码（60s 倒计时，useCountdown 卸载清理）→ 输码登录 → useAuth 写入 token →
+     按登录前 URL 回跳（client.ts 401 时携带的 redirect）。dev 环境固定码 123456 由后端返回。 -->
 <template>
   <div class="login-card">
     <h2 class="title">标书废检 · 登录</h2>

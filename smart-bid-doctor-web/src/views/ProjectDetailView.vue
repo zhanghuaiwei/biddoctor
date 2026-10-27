@@ -1,3 +1,7 @@
+<!-- 项目工作台（02 §9.2–§9.4）：核心业务页面。
+     主线：招标 PDF 上传（UploadSlot）→ 解析进度轮询（usePolling + documents/{did}/status，
+     终态自动停）→ 对照发起（需双文件就绪，402 引导买次数包）→ 对照结果/清单查看（M1 引擎
+     接入前清单生成/导出为 501，前端按 NOT_IMPLEMENTED 错误码提示）。 -->
 <template>
   <div class="page" v-if="project">
     <el-card class="block">

@@ -1,3 +1,5 @@
+<!-- 顶栏配额徽标：挂载即拉 /me/quota 展示免费额度与对照次数余量（只读展示，
+     不承担刷新职责；配额变动页面自行触发重新拉取）。 -->
 <template>
   <span v-if="loaded" class="quota-badge">
     本月免费 <b>{{ quota.free_left }}</b> 个 · 对照次数 <b>{{ packRemain }}</b>

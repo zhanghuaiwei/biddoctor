@@ -1,3 +1,11 @@
+"""文档与解析块（03 §2.4 documents / doc_blocks）。
+
+- Document：原件元数据 + 解析/向量化状态机；sha256 内容寻址去重（同内容复用存储，
+  purge 时按引用计数决定是否删物理文件）；原件留存策略见 purge（03 §5）；
+- DocBlock：解析产物（页码/坐标/段落表格分类），M1 解析引擎写入；embedding 列 +
+  HNSW 向量索引 + pg_trgm 文本索引，为 M2 对照的混合检索预置（02 §5）。
+"""
+
 from datetime import datetime
 from decimal import Decimal
 

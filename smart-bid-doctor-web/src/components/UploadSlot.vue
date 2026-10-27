@@ -1,3 +1,6 @@
+<!-- 文件上传槽：role（tender/bid）绑定的单文件上传组件。
+     走 api/projects.ts uploadDocument（120s 放宽超时）；上传后交由父页面轮询解析进度。
+     仅做前端前置校验（类型/大小提示），权威校验以后端魔数/加密/页数/大小为准。 -->
 <template>
   <div class="upload-slot">
     <div class="slot-title">{{ title }}</div>

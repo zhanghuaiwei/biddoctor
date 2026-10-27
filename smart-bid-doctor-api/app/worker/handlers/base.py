@@ -1,4 +1,9 @@
-"""handler 公共小工具：桩式完成/失败（业务接入后替换为真实状态推进）"""
+"""handler 公共小工具：桩式完成（业务接入后由各 handler 的真实状态推进替换）。
+
+真实引擎接入后：parse/extract/embed/checklist/compare 均改为按业务更新
+progress/stage 并置终态，本函数仅保留给 purge 等生命周期任务过渡使用；
+M1 全部业务 handler 就绪后可删除本函数与各 stub 引用（F1 清理项）。
+"""
 
 import datetime as dt
 

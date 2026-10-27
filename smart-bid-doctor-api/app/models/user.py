@@ -1,3 +1,11 @@
+"""用户与验证码（03 §2.2 users / verification_codes）。
+
+- User：邮箱为唯一登录标识（全串 lower 归一，注册/登录同口径）；软删用户登录查询
+  过滤 `deleted_at IS NULL`（部分索引同步过滤）；phone 为 P2 短信通道预留列；
+- VerificationCode：一次性凭据——消费必须走原子 UPDATE + rowcount 判定
+  （auth_svc.login），禁 check-then-act。
+"""
+
 from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, text

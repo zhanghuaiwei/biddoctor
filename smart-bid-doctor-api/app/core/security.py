@@ -1,3 +1,11 @@
+"""JWT 签发与验签（01·D8 认证选型）。
+
+安全基线（AGENTS.md 安全行）：
+- 算法白名单 HS256——decode 显式传 algorithms，拒绝 alg 混淆攻击；
+- secret 来自配置（prod 强制 ≥32 字符，config._prod_guard fail-fast）；
+- sub 一律字符串存 user_id，任何取用方必须先验签（限流分桶/鉴权均如此）。
+"""
+
 import datetime as dt
 
 import jwt

@@ -1,3 +1,11 @@
+"""检查清单 / 对照 / 报告接口（02 §9.3–§9.4）。
+
+已完成：清单分页查询（五类筛选 + 分类统计）、双文件对照发起（202 + comparison/task id）、
+对照结果查询、报告详情查询。
+未接入（M1，显式 501 见 TODO）：清单报告生成、报告导出——业务引擎就绪前明确返回
+NOT_IMPLEMENTED，避免半成品语义；两个端点已保留归属校验，状态语义与 200 时刻一致。
+"""
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -44,6 +52,9 @@ def make_checklist_report(
     db: Session = Depends(get_db),
 ):
     project_svc.get_owned(db, pid, user.id)
+    # TODO(M1/D2) 接入后流程：校验解析就绪（400 前置）→ 建 checklist 任务（202 返回
+    #   task_id）→ worker checklist handler 调 engine.report 生成报告（渲染方案见
+    #   app/engine/report/__init__.py TODO 块）。前端轮询任务终态后拉取报告。
     # 业务端点：清单生成引擎（M1，见 02 §3-§4）未接入前明确 501，避免半成品语义
     raise AppError(ERROR_CODES["NOT_IMPLEMENTED"], "NOT_IMPLEMENTED", "清单生成引擎未接入（骨架版）——M1 实现")
 
@@ -81,5 +92,8 @@ def export_report(
     db: Session = Depends(get_db),
 ):
     check_svc.owned_report(db, rid, user.id)  # 归属校验先行，语义与 200 时刻一致
+    # TODO(M1/D2) 接入后：FileResponse(report.html_path, media_type="text/html")——
+    #   渲染在 worker 侧完成，本端点只做归属校验 + 文件下发；缺失文件（磁盘清理后）
+    #   回 410 语义错误码（新增需登记 ERROR_CODES）。
     # 业务端点：HTML 渲染（M06 renderer，见 02 §6.2）未接入前明确 501
     raise AppError(ERROR_CODES["NOT_IMPLEMENTED"], "NOT_IMPLEMENTED", "报告导出引擎未接入（骨架版）——M1 实现")

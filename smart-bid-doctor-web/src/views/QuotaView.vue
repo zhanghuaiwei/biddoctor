@@ -1,3 +1,5 @@
+<!-- 次数页（02 §9.5）：免费额度 + 有效次数包展示；SKU 目录取自 constants/skus.ts
+     （与后端 FJ_SKU_CATALOG 同源），下单走 billing 资源模块，支付为人工核销引导文案。 -->
 <template>
   <div class="page">
     <el-card class="block" header="我的次数">

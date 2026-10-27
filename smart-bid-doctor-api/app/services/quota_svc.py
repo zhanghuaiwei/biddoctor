@@ -61,6 +61,11 @@ def consume_compare(db: Session, user_id: int) -> int | None:
 
 
 def grant_pack(db: Session, user_id: int, sku: str, source_order: int | None, days_valid: int = 180):
+    """发放次数包：次数从 SKU 编码推导（cmp_xN → N 次），默认 180 天有效。
+
+    只 add 不 commit——核销（billing_svc.grant）要求订单状态翻转与发放同事务，
+    半失败整体回滚，杜绝「订单已核销但次数没到账」。
+    """
     q = QuotaAccount(
         user_id=user_id,
         type=sku,

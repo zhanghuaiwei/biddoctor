@@ -9,6 +9,7 @@ from app.services import quota_svc, task_svc
 
 
 def _project_documents(db: Session, project: Project) -> dict[str, Document]:
+    """项目下在册的招标/投标文档（role → Document），软删不取；缺 role 由调用方判 400。"""
     docs = {
         d.role: d
         for d in db.query(Document)

@@ -1,3 +1,5 @@
+<!-- 项目列表页（02 §9.2）：本人项目分页展示（统一 limit/offset）+ status 筛选 +
+     新建（免费配额 402 时提示）+ 软删（不释放当月名额）。入口经 api/projects.ts 资源模块。 -->
 <template>
   <div class="page">
     <el-card>

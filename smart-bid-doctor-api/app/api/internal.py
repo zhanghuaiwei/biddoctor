@@ -1,3 +1,11 @@
+"""健康检查与内部指标接口（04 §6）。
+
+- GET /healthz：探活（DB 连通 + 磁盘余量），限流豁免，全站唯一允许直接 ORM 的例外；
+- GET /internal/metrics：当日运营指标（任务分布 / LLM 成本 / 积压），供告警脚本与
+  daily_report 使用。鉴权双通道：X-Internal-Token（hmac.compare_digest 常量时间比较）
+  或管理员 Bearer（未配置内部令牌时回退，04 §6）。
+"""
+
 import datetime as dt
 import decimal
 import hmac

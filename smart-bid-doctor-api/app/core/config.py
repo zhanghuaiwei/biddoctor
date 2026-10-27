@@ -1,3 +1,12 @@
+"""应用配置（单一 Settings 出口，前缀 FJ_，全键清单见 .env.example）。
+
+范式约束：
+- SKU 目录/模型名/供应商地址等业务参数一律进配置不进代码（换供应商不改代码）；
+- prod 启动 fail-fast 校验强密钥与内部令牌（_prod_guard，04 §5）；
+- get_settings lru_cache 单例——测试需要覆写时用 get_settings.cache_clear()
+  或直接 Settings(**overrides) 构造注入。
+"""
+
 import json
 from functools import lru_cache
 

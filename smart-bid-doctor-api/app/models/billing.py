@@ -1,3 +1,11 @@
+"""配额与订单（03 §2.10–2.11 quota_accounts / orders）。
+
+- QuotaAccount：对照次数包（remain 原子扣减见 quota_svc.consume_compare；
+  免费额度走月度计数不入此表）；source_order 溯源但不加 FK（保留人工调整余地）；
+- Order：人工收款核销流程——order_no 唯一（FJ+北京日期+6 位随机，撞号重试），
+  状态机 pending → granted / expired / refunded，金额 Numeric(8,2) Decimal 契约。
+"""
+
 from datetime import datetime
 from decimal import Decimal
 

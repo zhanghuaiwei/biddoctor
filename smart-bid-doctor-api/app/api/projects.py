@@ -1,3 +1,14 @@
+"""项目 / 文档接口（02 §9.2）：CRUD、PDF 上传、解析进度、文档列表。
+
+实现要点（详细逻辑见对应 service docstring）：
+- 归属校验：所有路径先经 `project_svc.get_owned` / `document_svc.owned_document`，
+  非本人或软删资源一律 404（不泄露存在性）；
+- 上传链路：`document_svc.upload` 单事务完成「流式校验 → sha256 落盘 → 建 parse 任务」，
+  重复文件（同 sha256）不建任务直接复用，响应 `dup=true` + `task_id=null`；
+- 进度查询：`GET /documents/{did}/status` 聚合 parse_status + 任务进度（前端轮询入口）；
+- 审计点：创建 / 删除 / 上传各写一条 audit（AuditAction 常量）。
+"""
+
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
