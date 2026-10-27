@@ -61,7 +61,14 @@ def _account_id(request: Request) -> str | None:
 
 
 def _client_key(request: Request) -> str:
-    return _account_id(request) or f"ip:{request.client.host if request.client else 'unknown'}"
+    """分桶键：优先验签后的账号；否则用真实客户端 IP（与 deps.client_ip 同口径）。
+    局部导入避免循环依赖（deps → models）。"""
+    account = _account_id(request)
+    if account:
+        return account
+    from app.core.deps import client_ip
+
+    return f"ip:{client_ip(request) or 'unknown'}"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):

@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -33,7 +34,7 @@ class CheckItem(Base, PkMixin, UuidMixin, TimestampMixin):
     ref_page: Mapped[int] = mapped_column(Integer)
     is_mandatory: Mapped[bool] = mapped_column(Boolean, default=False)
     check_hint: Mapped[str | None] = mapped_column(Text)
-    confidence: Mapped[float] = mapped_column(Numeric(3, 2), default=1.00)
+    confidence: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=Decimal("1.00"))
 
     __table_args__ = (
         UniqueConstraint("project_id", "code", name="uq_check_items_code"),
@@ -68,7 +69,7 @@ class Finding(Base, PkMixin, TimestampMixin):
     reason: Mapped[str] = mapped_column(Text)
     bid_ref_page: Mapped[int | None] = mapped_column(Integer)
     bid_quote: Mapped[str | None] = mapped_column(Text)
-    confidence: Mapped[float] = mapped_column(Numeric(3, 2))
+    confidence: Mapped[Decimal] = mapped_column(Numeric(3, 2))
     rule_overridden: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (

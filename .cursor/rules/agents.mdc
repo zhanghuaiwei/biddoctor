@@ -1,0 +1,9 @@
+---
+description: smart-bid-doctor 工程约定（唯一来源：根目录 AGENTS.md）
+alwaysApply: true
+---
+
+先完整阅读根目录 AGENTS.md 并严格遵守；本文件只做转发，禁止另立或复制规则。
+
+- 修改任务自动按 AGENTS.md 分级并走强制闭环，无需用户指名级别。
+- 纯问答、只读分析、评估和状态查询保持只读。

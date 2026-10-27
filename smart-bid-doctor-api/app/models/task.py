@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -67,7 +68,7 @@ class LlmCall(Base, PkMixin, TimestampMixin):
     model: Mapped[str] = mapped_column(String(32))
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    cost_cny: Mapped[float] = mapped_column(Numeric(8, 4), default=0)
+    cost_cny: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0"))
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error: Mapped[str | None] = mapped_column(Text)
 

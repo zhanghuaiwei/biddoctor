@@ -21,7 +21,7 @@ def seeded_expired_project(client):
     from app.models import AuditLog, Document, LlmCall, Project, Task, User
 
     with SessionLocal() as db:
-        user = User(email=f"purge-{uuid.uuid4().hex[:8]}@fjtest.dev")
+        user = User(email=f"purge-{uuid.uuid4().hex[:8]}@test.dev")
         db.add(user)
         db.flush()
         project = Project(

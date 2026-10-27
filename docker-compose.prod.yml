@@ -28,11 +28,20 @@ services:
       FJ_RATE_LIMIT_PER_MIN: ${FJ_RATE_LIMIT_PER_MIN:-120}
     volumes:
       - /data/uploads:/data/uploads
+      - /data/reports:/data/reports   # M1 报告导出：与 worker 共享渲染产物（03 §2.7 html_path）
     depends_on:
       db:
         condition: service_healthy
     restart: always
-    command: sh -c "python scripts/bootstrap.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    # --proxy-headers：从 nginx 的 X-Forwarded-For 还原真实客户端 IP（限流/审计分桶依赖）；
+    # api 未发布端口，仅 nginx 可达，docker 内网可信
+    command: sh -c "python scripts/bootstrap.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips='*'"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/healthz', timeout=3).status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     # api 无出网需求（04 §5 隔离：worker 专属 LLM 出网白名单）
 
   worker:

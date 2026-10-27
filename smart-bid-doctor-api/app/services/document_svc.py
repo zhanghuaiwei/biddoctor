@@ -1,23 +1,60 @@
-import io
+"""文档上传业务（02 §9.2）：流式接收校验 → 落盘 → 建解析任务。api 层只做参数接收。"""
+
+import hashlib
+import tempfile
+from typing import BinaryIO
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.enums import EmbeddingStatus, ParseStatus
 from app.core.errors import AppError
 from app.models import Document
 from app.services import task_svc
-from app.services.storage import LocalStorage
+from app.services.storage import Storage
+
+_SPOOL_MEM_BYTES = 4 * 1024 * 1024  # 超过 4MB 落盘，上传不再整文件占内存
+_CHUNK_BYTES = 1024 * 1024
 
 
-def _check_pdf(data: bytes) -> int:
+def _receive_pdf(file: UploadFile) -> tuple[BinaryIO, int, str, int]:
+    """流式接收：边写临时文件边算 sha256/大小，超限即拒；返回 (spool, size, sha256, pages)。
+
+    PdfReader 需要可 seek 的流，SpooledTemporaryFile（超限自动落盘）两者兼得，
+    并发大文件上传的内存占用从 O(文件大小) 降为 O(_SPOOL_MEM_BYTES)。
+    调用方负责 close 返回的 spool。
+    """
+    s = get_settings()
+    limit = s.max_upload_mb * 1024 * 1024
+    sha = hashlib.sha256()
+    size = 0
+    spool = tempfile.SpooledTemporaryFile(max_size=_SPOOL_MEM_BYTES)
+    try:
+        while chunk := file.file.read(_CHUNK_BYTES):
+            size += len(chunk)
+            if size > limit:
+                raise AppError(413, "FILE_TOO_LARGE", f"文件超过 {s.max_upload_mb}MB 上限")
+            sha.update(chunk)
+            spool.write(chunk)
+        spool.seek(0)
+        pages = _check_pdf(spool)
+        return spool, size, sha.hexdigest(), pages
+    except BaseException:
+        spool.close()
+        raise
+
+
+def _check_pdf(stream: BinaryIO) -> int:
     """PDF 魔数/加密/页数校验，返回页数（02 §2.2 接收校验）"""
-    if not data.startswith(b"%PDF"):
+    if not stream.read(4).startswith(b"%PDF"):
         raise AppError(400, "PARSE_CORRUPT", "不是有效的 PDF 文件")
+    stream.seek(0)
+
     from pypdf import PdfReader
 
     try:
-        reader = PdfReader(io.BytesIO(data))
+        reader = PdfReader(stream)
         if reader.is_encrypted:
             raise AppError(400, "PARSE_ENCRYPTED", "文件已加密，请上传解密后的 PDF")
         pages = len(reader.pages)
@@ -33,19 +70,18 @@ def _check_pdf(data: bytes) -> int:
 
 def upload(
     db: Session,
-    storage: LocalStorage,
+    storage: Storage,
     *,
     project_id: int,
     role: str,
     file: UploadFile,
 ) -> tuple[Document, bool, int | None]:
     """校验 + 落盘 + 建解析任务，单事务提交。返回 (document, dup, task_id)。"""
-    s = get_settings()
-    data = file.file.read(s.max_upload_mb * 1024 * 1024 + 1)
-    if len(data) > s.max_upload_mb * 1024 * 1024:
-        raise AppError(413, "FILE_TOO_LARGE", f"文件超过 {s.max_upload_mb}MB 上限")
-    pages = _check_pdf(data)
-    sha, stored_path = storage.save(data)
+    spool, size, sha, pages = _receive_pdf(file)
+    try:
+        stored_path = storage.save_stream(spool, sha)
+    finally:
+        spool.close()
 
     dup = (
         db.query(Document)
@@ -56,15 +92,15 @@ def upload(
     doc = Document(
         project_id=project_id,
         role=role,
-        orig_name=file.filename or "upload.pdf",
+        orig_name=(file.filename or "upload.pdf")[:256],
         stored_path=stored_path,
         sha256=sha,
-        size_bytes=len(data),
+        size_bytes=size,
         total_pages=pages,
         # 同 sha 文件视为已解析（TODO(M1): 业务接入后应复用解析结果而非跳过）
-        parse_status="done" if dup else "pending",
+        parse_status=ParseStatus.DONE if dup else ParseStatus.PENDING,
         parse_warnings=[] if not dup else ["重复文件：复用已有解析结果（骨架版未复用）"],
-        embedding_status="skipped" if dup else "pending",
+        embedding_status=EmbeddingStatus.SKIPPED if dup else EmbeddingStatus.PENDING,
     )
     db.add(doc)
     db.flush()

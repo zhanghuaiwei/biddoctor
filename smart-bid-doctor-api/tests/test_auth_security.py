@@ -21,7 +21,7 @@ def _clean_throttle():
 
 def _email(client, local: str) -> tuple[str, str]:
     """注册邮箱并返回 (email, 正确验证码)"""
-    email = f"{local}@fjtest.dev"
+    email = f"{local}@test.dev"
     code = client.post("/api/auth/email-code", json={"email": email}).json()["dev_code"]
     return email, code
 
@@ -77,7 +77,7 @@ def test_email_normalized_case_insensitive(client):
     from app.core.db import SessionLocal
     from app.models import User
 
-    upper = f"Case.Test-{uuid.uuid4().hex[:6]}@FJTEST.DEV"
+    upper = f"Case.Test-{uuid.uuid4().hex[:6]}@TEST.DEV"
     code = client.post("/api/auth/email-code", json={"email": upper}).json()["dev_code"]
     r = client.post("/api/auth/login", json={"email": upper, "code": code})
     assert r.status_code == 200
@@ -99,7 +99,7 @@ def test_audit_detail_carries_request_id(client):
     from app.core.db import SessionLocal
     from app.models import AuditLog
 
-    email = f"rid-{uuid.uuid4().hex[:8]}@fjtest.dev"
+    email = f"rid-{uuid.uuid4().hex[:8]}@test.dev"
     code = client.post("/api/auth/email-code", json={"email": email}).json()["dev_code"]
     r = client.post("/api/auth/login", json={"email": email, "code": code})
     rid = r.headers.get("X-Request-ID")

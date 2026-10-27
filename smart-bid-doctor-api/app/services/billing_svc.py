@@ -43,13 +43,12 @@ def create_order(db: Session, user_id: int, sku: str, note: str | None) -> Order
     raise AppError(500, "ORDER_NO_CONFLICT", "订单号生成冲突，请重试")
 
 
-def list_orders(db: Session, user_id: int, limit: int = 50) -> list[Order]:
+def list_orders(db: Session, user_id: int, *, limit: int = 20, offset: int = 0) -> tuple[list[Order], int]:
+    q = db.query(Order).filter(Order.user_id == user_id)
+    total = q.count()
     return (
-        db.query(Order)
-        .filter(Order.user_id == user_id)
-        .order_by(Order.id.desc())
-        .limit(limit)
-        .all()
+        q.order_by(Order.id.desc()).offset(offset).limit(min(limit, 100)).all(),
+        total,
     )
 
 

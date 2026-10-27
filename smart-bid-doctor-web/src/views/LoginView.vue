@@ -1,65 +1,71 @@
 <template>
   <div class="login-card">
     <h2 class="title">标书废检 · 登录</h2>
-    <el-form label-position="top">
-      <el-form-item label="邮箱">
-        <el-input v-model="email" placeholder="you@example.com" />
+    <el-form ref="formRef" label-position="top" :model="form" :rules="rules" @submit.prevent>
+      <el-form-item label="邮箱" prop="email">
+        <el-input v-model="form.email" placeholder="you@example.com" @keyup.enter="sendCode" />
       </el-form-item>
-      <el-form-item label="验证码">
+      <el-form-item label="验证码" prop="code">
         <div class="code-row">
-          <el-input v-model="code" placeholder="6 位验证码" />
-          <el-button :disabled="cooling > 0" @click="sendCode">
-            {{ cooling > 0 ? `${cooling}s` : '获取验证码' }}
+          <el-input v-model="form.code" placeholder="6 位验证码" @keyup.enter="login" />
+          <el-button :disabled="remaining > 0" @click="sendCode">
+            {{ remaining > 0 ? `${remaining}s 后重发` : '获取验证码' }}
           </el-button>
         </div>
       </el-form-item>
-      <el-button type="primary" class="submit" :loading="loading" @click="login">登录 / 注册</el-button>
+      <el-button type="primary" class="submit" :loading="loading" @click="login">
+        登录 / 注册
+      </el-button>
     </el-form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { api, setToken } from '../api'
+import { reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import type { FormInstance, FormRules } from 'element-plus'
+
+import { login as loginApi, requestEmailCode } from '@/api/auth'
+import { notifyApiError } from '@/api/client'
+import { useAuth } from '@/composables/useAuth'
+import { useCountdown } from '@/composables/useCountdown'
 
 const router = useRouter()
-const email = ref('')
-const code = ref('')
+const route = useRoute()
+const { login: onLoginSuccess } = useAuth()
+
+const formRef = ref<FormInstance>()
+const form = reactive({ email: '', code: '' })
+const rules: FormRules = {
+  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
+}
 const loading = ref(false)
-const cooling = ref(0)
+const { remaining, start } = useCountdown(60)
 
 async function sendCode() {
-  if (!email.value) return ElMessage.warning('请先输入邮箱')
+  if (!form.email) return ElMessage.warning('请先输入邮箱')
   try {
-    const res = await api('/auth/email-code', {
-      method: 'POST',
-      body: JSON.stringify({ email: email.value }),
-    })
+    const res = await requestEmailCode(form.email)
     if (res.dev_code) ElMessage.info(`开发环境验证码：${res.dev_code}`)
     else ElMessage.success('验证码已发送，请查收邮箱')
-    cooling.value = 60
-    const t = setInterval(() => {
-      cooling.value -= 1
-      if (cooling.value <= 0) clearInterval(t)
-    }, 1000)
-  } catch (e: any) {
-    ElMessage.error(e.message)
+    start()
+  } catch (e) {
+    notifyApiError(e, '验证码发送失败')
   }
 }
 
 async function login() {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
   loading.value = true
   try {
-    const res = await api('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email: email.value, code: code.value }),
-    })
-    setToken(res.token)
-    localStorage.setItem('fj_email', res.user.email)
-    router.push('/projects')
-  } catch (e: any) {
-    ElMessage.error(e.message)
+    const res = await loginApi(form.email, form.code)
+    onLoginSuccess(res.token, res.user.email)
+    // 支持登录后回跳来源页（api/client 401 时携带 redirect）
+    router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/projects')
+  } catch (e) {
+    notifyApiError(e, '登录失败')
   } finally {
     loading.value = false
   }

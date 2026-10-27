@@ -22,15 +22,21 @@ class Settings(BaseSettings):
     )
     cors_origins: str = "http://localhost:5173"
     rate_limit_per_min: int = 120  # 每账号+IP 每分钟请求数（02 §9），0=关闭限流
+    # LLM Provider（01·D1：智谱单供应商，OpenAI 兼容；模型版本随 lineup 更新，进配置不进代码）
+    zhipu_api_key: str = ""  # M1 接入真实调用时必填
+    zhipu_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
+    llm_model_heavy: str = "glm-4.6"  # 重任务：条款抽取/对照判定（02 §7）
+    llm_model_light: str = "glm-4.5-flash"  # 轻任务：分类/摘要/兜底重试
 
     @model_validator(mode="after")
     def _prod_guard(self):
         """prod 启动 fail-fast：防止默认密钥/空内部令牌带上线（04 §5）"""
+        prefix = self.model_config.get("env_prefix", "")
         if self.env == "prod":
             if self.jwt_secret == "dev-secret-change-me" or len(self.jwt_secret) < 32:
-                raise ValueError("prod 环境必须设置强随机 FJ_JWT_SECRET（≥32 字符）")
+                raise ValueError(f"prod 环境必须设置强随机 {prefix}JWT_SECRET（≥32 字符）")
             if not self.internal_token:
-                raise ValueError("prod 环境必须设置 FJ_INTERNAL_TOKEN")
+                raise ValueError(f"prod 环境必须设置 {prefix}INTERNAL_TOKEN")
             if self.cors_origins.strip() == "*":
                 raise ValueError("prod 环境不允许 CORS 全放开")
         return self

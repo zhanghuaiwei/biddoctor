@@ -4,6 +4,7 @@ import datetime as dt
 
 from sqlalchemy.orm import Session
 
+from app.core.enums import TaskStatus
 from app.models import Task
 
 
@@ -11,7 +12,7 @@ def stub_done(db: Session, task_id: int, stage: str = "stub") -> None:
     t = db.get(Task, task_id)
     if t is None:
         return
-    t.status = "succeeded"
+    t.status = TaskStatus.SUCCEEDED
     t.stage = stage
     t.progress = 100
     t.finished_at = dt.datetime.now(dt.UTC)

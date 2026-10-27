@@ -1,48 +1,55 @@
-"""统一业务错误：抛 AppError，由 handler 包装为 {"error": {code, message}}（02 §11）
+"""统一业务错误：抛 AppError，由 handler 包装为 {"error": {code, message}}（02 §11）。
 
-======================== 错误码注册表（新增码必须在此登记） ========================
-认证
-  UNAUTHORIZED          未登录/token 无效           401
-  CODE_INVALID          验证码错误或已过期           401
-  LOGIN_LOCKED          登录失败次数过多（防爆破）    429
-  ACCOUNT_BANNED        账号被禁用                  403
-  CODE_TOO_FREQUENT     验证码发送过频               429
-通用
-  VALIDATION_ERROR      请求参数校验失败             422（main.py handler）
-  NOT_FOUND             路由不存在                   404（main.py handler）
-  HTTP_ERROR            其他 HTTP 异常               -
-  RATE_LIMITED          接口限流                     429（ratelimit 中间件）
-  FORBIDDEN             非管理员访问管理端点          403
-项目/文件
-  PROJECT_NOT_FOUND     项目不存在或越权             404
-  DOCUMENT_NOT_FOUND    文件不存在或越权             404
-  TASK_NOT_FOUND        任务不存在或越权             404
-  REPORT_NOT_FOUND      报告不存在或越权             404
-  COMPARISON_NOT_FOUND  无对照记录                   404
-  BAD_ROLE              上传 role 非法               400
-  FILE_TOO_LARGE        超 100MB                    413
-  FILE_TOO_MANY_PAGES   超 500 页                   413
-  PARSE_ENCRYPTED       加密 PDF                    400
-  PARSE_CORRUPT         损坏/非 PDF                 400
-对照/清单
-  DOC_MISSING           缺招标或投标文件             400
-  DOC_NOT_READY         文档解析未完成               400
-  QUOTA_EXCEEDED        次数/免费额度不足            402
-  NOT_IMPLEMENTED       业务引擎未接入（骨架桩）      501
-订单
-  BAD_SKU               不存在的商品                 400
-  ORDER_NOT_FOUND       订单不存在                   404
-  ORDER_STATE           订单状态不允许核销            409
-  ORDER_NO_CONFLICT     订单号重试耗尽               500
-worker（任务表 error_code，不抛 API）
-  WORKER_TIMEOUT        心跳超时回收失败              -
-  HANDLER_CRASH         handler 异常重试耗尽          -
-  UNKNOWN_TASK_TYPE     未知任务类型                 -
-====================================================================================
+错误码注册表：新增码必须先在 ERROR_CODES 登记（code → 约定 HTTP 状态），
+tests/test_errors_registry.py 会静态扫描 app/ 下所有 AppError 调用点做守卫——
+未登记或状态不一致的码会让测试失败，防止「抛了码没进表」的漂移。
 """
+
+# 业务错误码（AppError 抛出）；status 为约定 HTTP 状态，各抛出点必须一致
+ERROR_CODES: dict[str, int] = {
+    # 认证
+    "UNAUTHORIZED": 401,
+    "CODE_INVALID": 401,
+    "LOGIN_LOCKED": 429,
+    "ACCOUNT_BANNED": 403,
+    "CODE_TOO_FREQUENT": 429,
+    # 通用（以下三个由 main.py handler / ratelimit 中间件直接产出，不经 AppError）
+    "VALIDATION_ERROR": 422,
+    "NOT_FOUND": 404,
+    "HTTP_ERROR": 0,  # 动态状态，随 HTTPException
+    "RATE_LIMITED": 429,
+    "FORBIDDEN": 403,
+    # 项目 / 文件
+    "PROJECT_NOT_FOUND": 404,
+    "DOCUMENT_NOT_FOUND": 404,
+    "TASK_NOT_FOUND": 404,
+    "REPORT_NOT_FOUND": 404,
+    "COMPARISON_NOT_FOUND": 404,
+    "BAD_ROLE": 400,
+    "FILE_TOO_LARGE": 413,
+    "FILE_TOO_MANY_PAGES": 413,
+    "PARSE_ENCRYPTED": 400,
+    "PARSE_CORRUPT": 400,
+    # 对照 / 清单
+    "DOC_MISSING": 400,
+    "DOC_NOT_READY": 400,
+    "QUOTA_EXCEEDED": 402,
+    "NOT_IMPLEMENTED": 501,
+    # 订单
+    "BAD_SKU": 400,
+    "ORDER_NOT_FOUND": 404,
+    "ORDER_STATE": 409,
+    "ORDER_NO_CONFLICT": 500,
+    # worker（写入 tasks.error_code，不作为 API 响应；status=0 表示不适用）
+    "WORKER_TIMEOUT": 0,
+    "HANDLER_CRASH": 0,
+    "UNKNOWN_TASK_TYPE": 0,
+}
 
 
 class AppError(Exception):
+    """业务错误：status=HTTP 状态，code 必须在 ERROR_CODES 注册，message 为用户可读中文。"""
+
     def __init__(self, status: int, code: str, message: str):
         self.status = status
         self.code = code

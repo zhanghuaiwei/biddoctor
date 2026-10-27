@@ -44,7 +44,6 @@ def test_healthz_exempt():
 def test_accounts_bucketed_separately():
     """同 IP 不同账号分桶：02 §9 限流维度为账号+IP"""
     client = make_app(limit=1)
-    h_a = {"Authorization": "Bearer x.y.z"}  # 解不出 sub 会回退 IP——用可解码 token
     from app.core.security import create_token
 
     tok_a = create_token(1, "user")
@@ -53,7 +52,6 @@ def test_accounts_bucketed_separately():
     assert client.get("/api/ping", headers={"Authorization": f"Bearer {tok_a}"}).status_code == 429
     # 账号 B 独立桶
     assert client.get("/api/ping", headers={"Authorization": f"Bearer {tok_b}"}).status_code == 200
-    assert h_a  # noqa: F841 (占位避免 lint)
 
 
 def test_invalid_token_falls_back_to_ip():

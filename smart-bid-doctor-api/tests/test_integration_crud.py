@@ -80,20 +80,11 @@ def test_full_crud_flow(client, user_token, admin_token):
     )
     assert r.json()["dup"] is True
 
-    # 5. 未付款发起对照 → 402
+    # 5. 对照前置校验（时序：双文件就绪先于配额）：tender 解析未完成 → 400 DOC_NOT_READY
     r = client.post(f"/api/projects/{pid}/compare", headers=h)
-    assert r.status_code == 402 and r.json()["error"]["code"] == "QUOTA_EXCEEDED"
+    assert r.status_code == 400 and r.json()["error"]["code"] == "DOC_NOT_READY"
 
-    # 6. 下单 → 管理员核销 → 次数到账
-    r = client.post("/api/orders", headers=h, json={"sku": "cmp_x5"})
-    assert r.status_code == 201, r.text
-    order_no = r.json()["order_no"]
-    r = client.post(f"/api/admin/orders/{order_no}/grant", headers=_auth(admin_token))
-    assert r.status_code == 200, r.text
-    packs = client.get("/api/me/quota", headers=h).json()["packs"]
-    assert packs and packs[0]["remain"] == 5
-
-    # 7. 模拟 worker 完成解析（集成测试不启动 worker）→ 对照 202
+    # 6. 双文件就绪但未付费 → 402 引导付费
     from app.core.db import SessionLocal
     from app.models import Document
 
@@ -102,16 +93,32 @@ def test_full_crud_flow(client, user_token, admin_token):
         doc.parse_status = "done"
         db.commit()
     r = client.post(f"/api/projects/{pid}/compare", headers=h)
+    assert r.status_code == 402 and r.json()["error"]["code"] == "QUOTA_EXCEEDED"
+
+    # 7. 下单 → 管理员核销 → 次数到账（订单分页含 total）
+    r = client.post("/api/orders", headers=h, json={"sku": "cmp_x5"})
+    assert r.status_code == 201, r.text
+    order_no = r.json()["order_no"]
+    assert r.json()["pay_hint"]  # 下单响应带收款提示
+    r = client.post(f"/api/admin/orders/{order_no}/grant", headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    packs = client.get("/api/me/quota", headers=h).json()["packs"]
+    assert packs and packs[0]["remain"] == 5
+    orders = client.get("/api/orders", headers=h).json()
+    assert orders["total"] == 1 and orders["items"][0]["order_no"] == order_no
+
+    # 8. 次数就绪 → 对照 202 并扣减 1 次
+    r = client.post(f"/api/projects/{pid}/compare", headers=h)
     assert r.status_code == 202, r.text
     task_id = r.json()["task_id"]
     assert client.get(f"/api/tasks/{task_id}", headers=h).status_code == 200
     assert client.get("/api/me/quota", headers=h).json()["packs"][0]["remain"] == 4
 
-    # 8. 重复核销 → 409
+    # 9. 重复核销 → 409
     r = client.post(f"/api/admin/orders/{order_no}/grant", headers=_auth(admin_token))
     assert r.status_code == 409
 
-    # 9. 删除项目 → 列表归零
+    # 10. 删除项目 → 列表归零
     assert client.delete(f"/api/projects/{pid}", headers=h).status_code == 204
     assert client.get("/api/projects", headers=h).json()["total"] == 0
 
@@ -120,10 +127,10 @@ def test_free_quota_exhausted(client, user_token):
     """免费配额（02 §9.3：3 项目/月）耗尽 → 402；软删不释放当月名额"""
     email_local = uuid.uuid4().hex[:8]
     code = client.post(
-        "/api/auth/email-code", json={"email": f"quota-{email_local}@fjtest.dev"}
+        "/api/auth/email-code", json={"email": f"quota-{email_local}@test.dev"}
     ).json()["dev_code"]
     qh = _auth(client.post(
-        "/api/auth/login", json={"email": f"quota-{email_local}@fjtest.dev", "code": code}
+        "/api/auth/login", json={"email": f"quota-{email_local}@test.dev", "code": code}
     ).json()["token"])
 
     for i in range(3):

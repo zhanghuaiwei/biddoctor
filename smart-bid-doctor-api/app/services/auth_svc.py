@@ -12,6 +12,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.enums import UserStatus, VerificationChannel
 from app.core.errors import AppError
 from app.core.ratelimit import SlidingWindowLimiter
 from app.models import User, VerificationCode
@@ -38,7 +39,10 @@ def request_email_code(db: Session, raw_email: str) -> tuple[bool, str | None]:
 
     last = (
         db.query(VerificationCode)
-        .filter(VerificationCode.channel == "email", VerificationCode.target == email)
+        .filter(
+            VerificationCode.channel == VerificationChannel.EMAIL,
+            VerificationCode.target == email,
+        )
         .order_by(VerificationCode.id.desc())
         .first()
     )
@@ -48,7 +52,7 @@ def request_email_code(db: Session, raw_email: str) -> tuple[bool, str | None]:
     today = (
         db.query(func.count(VerificationCode.id))
         .filter(
-            VerificationCode.channel == "email",
+            VerificationCode.channel == VerificationChannel.EMAIL,
             VerificationCode.target == email,
             VerificationCode.created_at >= now.replace(hour=0, minute=0, second=0, microsecond=0),
         )
@@ -61,7 +65,7 @@ def request_email_code(db: Session, raw_email: str) -> tuple[bool, str | None]:
     code = s.dev_fixed_code if s.env == "dev" else f"{random.randint(0, 999999):06d}"
     db.add(
         VerificationCode(
-            channel="email",
+            channel=VerificationChannel.EMAIL,
             target=email,
             code=code,
             expires_at=now + dt.timedelta(minutes=10),
@@ -83,7 +87,7 @@ def login(db: Session, raw_email: str, code: str, ip: str) -> User:
     vc = (
         db.query(VerificationCode)
         .filter(
-            VerificationCode.channel == "email",
+            VerificationCode.channel == VerificationChannel.EMAIL,
             VerificationCode.target == email,
             VerificationCode.used_at.is_(None),
         )
@@ -113,7 +117,7 @@ def login(db: Session, raw_email: str, code: str, ip: str) -> User:
         user = User(email=email, nickname=email.split("@")[0])
         db.add(user)
         db.flush()
-    if user.status == "banned":  # 封禁用户不发 token（deps 层还会兜底校验）
+    if user.status == UserStatus.BANNED:  # 封禁用户不发 token（deps 层还会兜底校验）
         db.rollback()
         raise AppError(403, "ACCOUNT_BANNED", "账号已被禁用，请联系客服")
     user.last_login_at = now

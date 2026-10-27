@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -31,7 +32,7 @@ class Document(Base, PkMixin, UuidMixin, TimestampMixin):
     sha256: Mapped[str] = mapped_column(CHAR(64))
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     total_pages: Mapped[int | None] = mapped_column(Integer)
-    is_scanned_ratio: Mapped[float | None] = mapped_column(Numeric(4, 3))
+    is_scanned_ratio: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     parse_status: Mapped[str] = mapped_column(String(16), default="pending")
     # pending | running | done | failed | need_review
     parse_warnings: Mapped[list[str]] = mapped_column(JSONB, default=list)

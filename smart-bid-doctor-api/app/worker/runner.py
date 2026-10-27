@@ -9,6 +9,7 @@ import time
 import sqlalchemy as sa
 
 from app.core.db import SessionLocal
+from app.core.enums import TaskStatus, TaskType
 from app.models import Task
 from app.worker import heartbeat
 from app.worker.handlers import checklist, compare, embed, extract, parse, purge
@@ -61,12 +62,12 @@ def enqueue_daily_purge(bj_now: dt.datetime | None = None) -> int | None:
     with SessionLocal() as db:
         exists = (
             db.query(Task.id)
-            .filter(Task.type == "purge", Task.created_at >= day_start_utc)
+            .filter(Task.type == TaskType.PURGE, Task.created_at >= day_start_utc)
             .first()
         )
         if exists:
             return None
-        t = Task(type="purge", status="pending", run_after=dt.datetime.now(dt.UTC))
+        t = Task(type=TaskType.PURGE, status=TaskStatus.PENDING, run_after=dt.datetime.now(dt.UTC))
         db.add(t)
         db.commit()
         log.info("daily purge task created id=%s (bj date %s)", t.id, bj_now.date())
@@ -79,17 +80,17 @@ def recover_stale() -> None:
         stale = (
             db.query(Task)
             .filter(
-                Task.status == "running",
+                Task.status == TaskStatus.RUNNING,
                 Task.heartbeat_at < dt.datetime.now(dt.UTC) - STALE_HEARTBEAT,
             )
             .all()
         )
         for t in stale:
             if t.attempt < MAX_ATTEMPT:
-                t.status = "pending"
+                t.status = TaskStatus.PENDING
                 t.run_after = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=30)
             else:
-                t.status = "failed"
+                t.status = TaskStatus.FAILED
                 t.error_code = "WORKER_TIMEOUT"
                 t.finished_at = dt.datetime.now(dt.UTC)
         db.commit()
@@ -100,7 +101,7 @@ def _fail(task_id: int, code: str, msg: str) -> None:
         t = db.get(Task, task_id)
         if t is None:
             return
-        t.status = "failed"
+        t.status = TaskStatus.FAILED
         t.error_code = code
         t.error_msg = msg
         t.finished_at = dt.datetime.now(dt.UTC)
@@ -113,7 +114,7 @@ def _requeue(task_id: int, delay_secs: int = 30) -> None:
         t = db.get(Task, task_id)
         if t is None:
             return
-        t.status = "pending"
+        t.status = TaskStatus.PENDING
         t.run_after = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=delay_secs)
         db.commit()
 

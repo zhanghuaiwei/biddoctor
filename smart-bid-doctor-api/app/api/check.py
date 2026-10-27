@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_current_user
-from app.core.errors import AppError
+from app.core.errors import ERROR_CODES, AppError
 from app.models import User
 from app.schemas.check import (
     CheckItemOut,
@@ -21,13 +21,15 @@ router = APIRouter(tags=["check"])
 def list_check_items(
     pid: int,
     category: str | None = None,
-    page: int = Query(default=1, ge=1),
-    size: int = Query(default=50, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     project = project_svc.get_owned(db, pid, user.id)
-    items, total, stats = check_svc.list_check_items(db, project, category, page, size)
+    items, total, stats = check_svc.list_check_items(
+        db, project, category, limit=limit, offset=offset
+    )
     return CheckItemsPage(
         items=[CheckItemOut.model_validate(i) for i in items],
         total=total,
@@ -43,7 +45,7 @@ def make_checklist_report(
 ):
     project_svc.get_owned(db, pid, user.id)
     # 业务端点：清单生成引擎（M1，见 02 §3-§4）未接入前明确 501，避免半成品语义
-    raise AppError(501, "NOT_IMPLEMENTED", "清单生成引擎未接入（骨架版）——M1 实现")
+    raise AppError(ERROR_CODES["NOT_IMPLEMENTED"], "NOT_IMPLEMENTED", "清单生成引擎未接入（骨架版）——M1 实现")
 
 
 @router.post("/projects/{pid}/compare", status_code=202, response_model=CompareStartedOut)
@@ -69,10 +71,7 @@ def latest_comparison(pid: int, user: User = Depends(get_current_user), db: Sess
 
 @router.get("/reports/{rid}", response_model=ReportOut)
 def get_report(rid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    report = check_svc.get_report_owned(db, rid, user.id)
-    if report is None:
-        raise AppError(404, "REPORT_NOT_FOUND", "报告不存在")
-    return ReportOut.model_validate(report)
+    return ReportOut.model_validate(check_svc.owned_report(db, rid, user.id))
 
 
 @router.get("/reports/{rid}/export", status_code=501)
@@ -81,8 +80,6 @@ def export_report(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    report = check_svc.get_report_owned(db, rid, user.id)
-    if report is None:
-        raise AppError(404, "REPORT_NOT_FOUND", "报告不存在")
+    check_svc.owned_report(db, rid, user.id)  # 归属校验先行，语义与 200 时刻一致
     # 业务端点：HTML 渲染（M06 renderer，见 02 §6.2）未接入前明确 501
-    raise AppError(501, "NOT_IMPLEMENTED", "报告导出引擎未接入（骨架版）——M1 实现")
+    raise AppError(ERROR_CODES["NOT_IMPLEMENTED"], "NOT_IMPLEMENTED", "报告导出引擎未接入（骨架版）——M1 实现")

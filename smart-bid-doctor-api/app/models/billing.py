@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -24,7 +25,7 @@ class Order(Base, PkMixin, TimestampMixin):
     order_no: Mapped[str] = mapped_column(String(24), unique=True)  # FJ+YYMMDD+6位随机
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
     sku: Mapped[str] = mapped_column(String(16))  # cmp_x5 | cmp_x20
-    amount_cny: Mapped[float] = mapped_column(Numeric(8, 2))
+    amount_cny: Mapped[Decimal] = mapped_column(Numeric(8, 2))
     status: Mapped[str] = mapped_column(String(16), default="pending")
     # pending | granted | expired | refunded
     note: Mapped[str | None] = mapped_column(String(256))

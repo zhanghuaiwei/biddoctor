@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.deps import get_current_user
-from app.core.errors import AppError
+from app.core.enums import DocumentRole
+from app.core.errors import ERROR_CODES, AppError
 from app.models import User
 from app.schemas.project import (
     DocumentListOut,
@@ -62,7 +63,7 @@ def delete_project(pid: int, user: User = Depends(get_current_user), db: Session
                   detail={"name": project.name})
 
 
-@router.post("/{pid}/documents", status_code=201)
+@router.post("/{pid}/documents", response_model=UploadOut, status_code=201)
 def upload_document(
     pid: int,
     file: UploadFile = File(...),
@@ -70,8 +71,8 @@ def upload_document(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if role not in ("tender", "bid"):
-        raise AppError(400, "BAD_ROLE", "role 必须为 tender 或 bid")
+    if role not in (DocumentRole.TENDER, DocumentRole.BID):
+        raise AppError(ERROR_CODES["BAD_ROLE"], "BAD_ROLE", "role 必须为 tender 或 bid")
     project = project_svc.get_owned(db, pid, user.id)
     storage = LocalStorage(get_settings().upload_dir)
     doc, dup, task_id = document_svc.upload(db, storage, project_id=project.id, role=role, file=file)
@@ -82,13 +83,15 @@ def upload_document(
 @router.get("/documents/{did}/status", response_model=DocumentStatusOut)
 def document_status(did: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = document_svc.owned_document(db, did, user.id)
-    task = task_svc.latest_for_document(db, doc.id, type_="parse")
+    task = task_svc.latest_for_document(db, doc.id)
     return DocumentStatusOut(
         parse_status=doc.parse_status,
-        progress=task.progress if task else (100 if doc.parse_status == "done" else 0),
+        progress=task_svc.display_progress(task, doc.parse_status),
         stage=task.stage if task else None,
         warnings=doc.parse_warnings or [],
-        is_scanned_ratio=float(doc.is_scanned_ratio) if doc.is_scanned_ratio is not None else None,
+        is_scanned_ratio=(
+            float(doc.is_scanned_ratio) if doc.is_scanned_ratio is not None else None
+        ),
         task_id=task.id if task else None,
     )
 

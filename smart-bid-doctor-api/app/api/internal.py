@@ -1,4 +1,5 @@
 import datetime as dt
+import decimal
 import hmac
 
 import sqlalchemy as sa
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.enums import UserRole
 from app.core.errors import AppError
 from app.schemas.internal import HealthOut, MetricsOut
 from app.services import metrics_svc
@@ -48,7 +50,7 @@ def _internal_auth(request: Request, db: Session) -> None:
         try:
             payload = decode_token(auth.removeprefix("Bearer "))
             user = db.get(U, int(payload["sub"]))
-            if user and user.role == "admin":
+            if user and user.role == UserRole.ADMIN:
                 return
         except Exception:
             pass
@@ -63,6 +65,7 @@ def metrics(request: Request, db: Session = Depends(get_db)):
     return MetricsOut(
         date=day_start.date().isoformat(),
         tasks_today_by_status=stats["tasks_by_status"],
-        llm_cost_cny_today=stats["llm_cost_cny"],
+        # 金额走 Decimal（经 str 中转，避免 float 二进制误差进账本口径）
+        llm_cost_cny_today=decimal.Decimal(str(stats["llm_cost_cny"])),
         pending_backlog=stats["pending_backlog"],
     )

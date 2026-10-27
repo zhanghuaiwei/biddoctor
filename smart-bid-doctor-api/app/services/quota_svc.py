@@ -1,4 +1,4 @@
-"""对照检查次数包：原子扣减 / 发放。commit 由调用方负责（保证与业务同事务）。"""
+"""对照次数包：原子扣减 / 发放。commit 由调用方负责（保证与业务同事务）。"""
 
 import datetime as dt
 
@@ -27,7 +27,8 @@ def free_left(db: Session, user_id: int) -> int:
     return max(0, s.free_projects_per_month - used)
 
 
-def packs(db: Session, user_id: int) -> list[dict]:
+def packs(db: Session, user_id: int) -> list[QuotaAccount]:
+    """有效次数包（未过期且有剩余）。返回 ORM 行，schema 层负责序列化。"""
     now = dt.datetime.now(dt.UTC)
     rows = (
         db.query(QuotaAccount)
@@ -35,17 +36,17 @@ def packs(db: Session, user_id: int) -> list[dict]:
             QuotaAccount.user_id == user_id,
             sa.or_(QuotaAccount.expires_at.is_(None), QuotaAccount.expires_at > now),
         )
+        .order_by(QuotaAccount.id.asc())
         .all()
     )
-    return [
-        {"id": r.id, "type": r.type, "remain": int(r.remain), "expires_at": r.expires_at}
-        for r in rows
-        if int(r.remain) > 0
-    ]
+    return [r for r in rows if int(r.remain) > 0]
 
 
 def consume_compare(db: Session, user_id: int) -> int | None:
-    """原子扣减一次对照次数，返回消耗的 quota id；无可用次数返回 None。不 commit。"""
+    """原子扣减一次对照次数，返回消耗的 quota id；无可用次数返回 None。不 commit。
+
+    单条 UPDATE 原子消费：未命中（rowcount=0）即无任何副作用，调用方无需回滚。
+    """
     now = dt.datetime.now(dt.UTC)
     return db.execute(
         sa.update(QuotaAccount)

@@ -1,35 +1,43 @@
-from datetime import datetime
+"""清单 / 对照 / 报告契约（02 §9.3、§9.4）"""
 
-from pydantic import BaseModel
+from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
+from app.core.enums import CheckCategory, ComparisonStatus, ReportKind
 
 
 class CheckItemOut(BaseModel):
     id: int
     code: str
-    category: str
+    category: CheckCategory
     requirement: str
     raw_text: str
     ref_page: int
     is_mandatory: bool
-    confidence: float
+    confidence: float  # 0-1 比例值非金额，float 便于前端直接渲染
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CheckItemsPage(BaseModel):
     items: list[CheckItemOut]
     total: int
-    stats: dict
+    stats: dict[str, int]  # category -> count
 
 
 class ComparisonOut(BaseModel):
     id: int
-    status: str
-    stats: dict
+    project_id: int
+    tender_doc_id: int
+    bid_doc_id: int
+    status: ComparisonStatus
+    stats: dict[str, Any]  # {"red":2,"yellow":5,"green":43}（M2 对照引擎写入）
     created_at: datetime
     finished_at: datetime | None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CompareStartedOut(BaseModel):
@@ -42,8 +50,8 @@ class CompareStartedOut(BaseModel):
 class ReportOut(BaseModel):
     id: int
     project_id: int
-    kind: str
-    report_data: dict
+    kind: ReportKind
+    report_data: dict[str, Any]  # 02 §6.2 报告结构
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

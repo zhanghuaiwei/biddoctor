@@ -62,17 +62,18 @@
 ```
 smart-bid-doctor/
 ├── AGENTS.md        # AI 编码工具工程约定（分层/事务/留痕/测试范式，所有 Agent 必读）
-├── smart-bid-doctor-api/     # FastAPI 后端：core/models/schemas/services/api 分层
+├── smart-bid-doctor-api/     # FastAPI 后端：core(配置/枚举/错误码注册表)/models/schemas/services/api 分层
 │                    #   + worker 任务执行器（SKIP LOCKED）+ alembic 迁移
 │                    #   app/engine/（解析/抽取/对照/报告）与 app/llm/（Provider）为接口占位
 ├── smart-bid-doctor-web/     # Vue3 + Vite + Element Plus 应用 SPA（登录/项目/上传/清单/次数订单）
+│                    #   src/api（统一请求层）+ components + composables + constants（枚举/SKU 归口）
 ├── smart-bid-doctor-site/    # 静态落地页（nginx 直出，保搜索引擎收录）
 ├── deploy/          # 生产 nginx 配置（静态前端 + /api 反代）
 └── LICENSE          # MIT
 ```
 
-已实现（非业务骨架）：邮箱验证码登录、项目 CRUD（含 status 过滤）、PDF 上传校验、任务创建与状态查询、统一错误体、健康检查与内部指标、结构化 JSON 日志、软删约定、越权 404 防护。
-业务桩：清单生成/报告导出端点返回 501，parse/extract/embed/checklist/compare handler 只推进任务状态，LLM Provider 为接口占位。
+已实现（非业务骨架）：邮箱验证码登录、项目 CRUD（含 status 过滤与分页）、PDF 上传校验（流式接收，边收边算 sha256/大小）、任务创建与状态查询、统一错误体（错误码注册表代码化 + AST 测试守卫）、业务枚举注册表（后端 `core/enums.py` ↔ 前端 `constants/enums.ts`）、健康检查与内部指标、结构化 JSON 日志、软删约定、越权 404 防护、反代真实客户端 IP 还原（限流/审计/防爆破同口径）。
+业务桩：清单生成/报告导出端点返回 501，parse/extract/embed/checklist/compare handler 只推进任务状态，LLM Provider 为接口占位（模型名/base_url 进配置）。
 
 ## 快速上手
 
@@ -111,7 +112,7 @@ make restore-backup FILE=/data/backups/xxx.dump   # 恢复演练（独立库）
 生产部署用 `docker-compose.prod.yml`（nginx + api + worker + db 完整拓扑，secrets 经 .env 注入）；
 任务执行器内置每日数据生命周期清理（type=purge，03 §5）与 running 任务心跳（02 §8）。
 
-配置经环境变量注入（前缀 `FJ_`，如 `FJ_DATABASE_URL` / `FJ_JWT_SECRET` / `FJ_UPLOAD_DIR`）；prod 环境启动强制校验强密钥与内部令牌。
+配置经环境变量注入（前缀 `FJ_`，全键清单见 `smart-bid-doctor-api/.env.example`，与 `app/core/config.py` Settings 一一对应，如 `FJ_DATABASE_URL` / `FJ_JWT_SECRET` / `FJ_UPLOAD_DIR` / `FJ_ZHIPU_API_KEY`）；prod 环境启动强制校验强密钥与内部令牌。
 
 ## 里程碑
 

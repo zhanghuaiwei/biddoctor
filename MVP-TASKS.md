@@ -7,12 +7,14 @@
 
 - [x] 邮箱验证码登录（防爆破 5 次/5min、验证码原子消费、email 归一、JWT 认证）
 - [x] 项目 CRUD + 免费配额 3/月（用户行锁防并发超发，软删不释放当月名额）
-- [x] PDF 上传校验（魔数/加密/≤500 页/≤100MB + sha256 去重）
+- [x] PDF 上传校验（魔数/加密/≤500 页/≤100MB + sha256 去重；流式接收，内存占用与文件大小解耦）
 - [x] 任务队列状态机（PG SKIP LOCKED + 30s 心跳 + 重试退避 + 稳态回收）
 - [x] 全生命周期留痕（audit_logs ↔ X-Request-ID ↔ tasks ↔ llm_calls 四链互查）
-- [x] 接口限流（账号+IP 滑窗）+ 安全响应头 + 统一错误体（31 错误码注册表）
-- [x] 运维底座：purge 生命周期任务 / 备份恢复 / 每日报表 / GitHub Actions CI / 生产 compose
-- [x] 测试基线：21 tests 全绿 + ruff + vue-tsc 类型门禁（CI 双绿）
+- [x] 接口限流（账号+IP 滑窗，反代下还原真实 IP）+ 安全响应头 + 统一错误体（错误码注册表代码化 + AST 测试守卫）
+- [x] 业务枚举注册表（后端 `core/enums.py` ↔ 前端 `constants/enums.ts`，状态/类别禁散落字面量）
+- [x] 前端产品化结构（api 资源模块分层 / constants 归口 / composables / UploadSlot·QuotaBadge 组件 / 404 路由 / 响应式布局）
+- [x] 运维底座：purge 生命周期任务 / 备份恢复 / 每日报表 / GitHub Actions CI / 生产 compose（api healthcheck + proxy-headers + reports 共享卷）
+- [x] 测试基线：24 tests（单测 14 + 集成 10）+ ruff + vue-tsc 类型门禁（CI 双绿；设计文档 01-04 已 v1.2 与代码对齐）
 
 ## A. LLM 接入层（一切引擎的前置）
 

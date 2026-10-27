@@ -3,6 +3,7 @@ import datetime as dt
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
+from app.core.enums import ProjectStatus
 from app.core.errors import AppError
 from app.models import Project, User
 from app.services import quota_svc
@@ -17,7 +18,7 @@ def create(db: Session, user_id: int, *, name: str, industry: str) -> Project:
         user_id=user_id,
         name=name,
         industry=industry,
-        status="draft",
+        status=ProjectStatus.DRAFT,
         retain_until=dt.datetime.now(dt.UTC) + dt.timedelta(days=30),  # 03 §5 留存期
     )
     db.add(p)
@@ -52,5 +53,5 @@ def list_owned(
 
 def soft_delete(db: Session, project: Project) -> None:
     project.deleted_at = dt.datetime.now(dt.UTC)
-    project.status = "archived"
+    project.status = ProjectStatus.ARCHIVED
     db.commit()
