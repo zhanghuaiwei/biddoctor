@@ -4,8 +4,10 @@
   <el-drawer
     v-model="theme.drawerOpen"
     direction="rtl"
-    size="360px"
+    :size="theme.drawerSize"
     :with-header="false"
+    :close-on-click-modal="theme.closeOnClickModal"
+    :close-on-press-escape="theme.closeOnPressEscape"
     class="theme-drawer"
   >
     <header class="drawer-head">
@@ -61,6 +63,49 @@
     </section>
 
     <section class="section">
+      <h3 class="section-title">交互偏好</h3>
+      <div class="field">
+        <span class="field-label">大内容承载</span>
+        <div class="seg">
+          <button
+            v-for="m in OVERLAY_MODES"
+            :key="m"
+            type="button"
+            class="seg-btn"
+            :class="{ 'is-active': theme.overlayMode === m }"
+            @click="theme.setOverlayMode(m)"
+          >
+            {{ OVERLAY_MODE_LABELS[m] }}
+          </button>
+        </div>
+        <p class="field-hint">内容少用弹窗、内容多用抽屉；「按内容自动」由弹层内容量决定</p>
+      </div>
+      <div class="field">
+        <span class="field-label">抽屉宽度</span>
+        <div class="seg">
+          <button
+            v-for="w in DRAWER_WIDTHS"
+            :key="w"
+            type="button"
+            class="seg-btn"
+            :class="{ 'is-active': theme.drawerWidth === w }"
+            @click="theme.setDrawerWidth(w)"
+          >
+            {{ DRAWER_WIDTH_LABELS[w] }}
+          </button>
+        </div>
+      </div>
+      <div class="field-row">
+        <span class="field-label">点击遮罩关闭</span>
+        <el-switch v-model="theme.closeOnClickModal" size="small" />
+      </div>
+      <div class="field-row">
+        <span class="field-label">ESC 关闭</span>
+        <el-switch v-model="theme.closeOnPressEscape" size="small" />
+      </div>
+    </section>
+
+    <section class="section">
       <h3 class="section-title">效果预览</h3>
       <div class="preview">
         <div class="preview-head">
@@ -76,7 +121,7 @@
     </section>
 
     <footer class="drawer-foot">
-      <el-button class="reset-btn" @click="theme.reset()">恢复默认（亮色 · 砖红）</el-button>
+      <el-button class="reset-btn" @click="theme.reset()">恢复默认（外观 + 交互）</el-button>
       <p class="foot-note">当前：{{ modeLabel }}</p>
     </footer>
   </el-drawer>
@@ -85,7 +130,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { THEME_MODES, THEME_MODE_LABELS, type ThemeMode } from '@/constants/theme'
+import {
+  DRAWER_WIDTHS,
+  DRAWER_WIDTH_LABELS,
+  OVERLAY_MODES,
+  OVERLAY_MODE_LABELS,
+  THEME_MODES,
+  THEME_MODE_LABELS,
+  type ThemeMode,
+} from '@/constants/theme'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
@@ -244,6 +297,75 @@ const MODE_ICONS: Record<ThemeMode, string> = {
 .swatch.is-active .swatch-label {
   color: @c-text;
   font-weight: 600;
+}
+
+// ---- 交互偏好 ----
+.field + .field {
+  margin-top: 14px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: @fs-xs;
+  color: @c-text-sub;
+}
+
+.field-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: @c-text-muted;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  & + & {
+    margin-top: 12px;
+  }
+
+  .field-label {
+    margin-bottom: 0;
+  }
+}
+
+// 分段控件：形态/宽度二选一，选中态取强调色浅底
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: @radius;
+  background: @c-surface-alt;
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 7px 8px;
+  border: none;
+  border-radius: @radius-sm;
+  background: transparent;
+  font: inherit;
+  font-size: @fs-xs;
+  color: @c-text-sub;
+  cursor: pointer;
+  transition:
+    background-color @dur-fast @ease-out,
+    color @dur-fast @ease-out;
+
+  &:hover {
+    color: @c-text;
+  }
+
+  &.is-active {
+    background: @c-surface;
+    color: var(--app-accent);
+    font-weight: 600;
+    box-shadow: @shadow-xs;
+  }
 }
 
 // ---- 预览 ----

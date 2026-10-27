@@ -1,34 +1,62 @@
 /**
- * 主题 store（Pinia setup store）——外观模式 + 强调色，运行期写回 CSS 变量。
+ * 主题 store（Pinia setup store）——外观模式 + 强调色 + 弹层交互偏好，运行期写回 CSS 变量。
  * - 可持久：偏好经 STORAGE_KEYS.theme 写 localStorage（键名归口 constants/storage.ts）；
  * - 可配置：ThemeDrawer 只调用 store 动作，色阶计算与 DOM 应用集中在此；
- * - 生效范围：global.less 的 --app-* 变量（应用自身样式）与 --el-color-primary 全色阶（Element 组件）。
+ * - 生效范围：global.less 的 --app-* 变量（应用自身样式）与 --el-color-primary 全色阶（Element 组件）；
+ *   交互偏好（弹窗/抽屉形态、抽屉宽度、遮罩与 ESC 关闭）由 components/OverlayPanel.vue 消费。
  */
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 
-import { ACCENT_PRESETS, DEFAULT_ACCENT, type ThemeMode } from '@/constants/theme'
+import {
+  ACCENT_PRESETS,
+  DEFAULT_ACCENT,
+  DEFAULT_INTERACTION,
+  DRAWER_SIZE_MAP,
+  type DrawerWidth,
+  type OverlayMode,
+  type ThemeMode,
+} from '@/constants/theme'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { mixHex } from '@/utils/color'
 
 interface ThemePrefs {
   mode: ThemeMode
   accent: string
+  overlayMode: OverlayMode
+  drawerWidth: DrawerWidth
+  closeOnClickModal: boolean
+  closeOnPressEscape: boolean
 }
 
 const VALID_HEX = /^#[0-9a-fA-F]{6}$/
 
 /** 读取持久化偏好（脏数据一律回退默认，避免坏值污染根变量） */
 function loadPrefs(): ThemePrefs {
+  const fallback: ThemePrefs = { mode: 'light', accent: DEFAULT_ACCENT, ...DEFAULT_INTERACTION }
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.theme)
-    if (!raw) return { mode: 'light', accent: DEFAULT_ACCENT }
+    if (!raw) return fallback
     const parsed = JSON.parse(raw) as Partial<ThemePrefs>
     const mode: ThemeMode = parsed.mode === 'dark' || parsed.mode === 'system' ? parsed.mode : 'light'
-    const accent = typeof parsed.accent === 'string' && VALID_HEX.test(parsed.accent) ? parsed.accent : DEFAULT_ACCENT
-    return { mode, accent }
+    const overlayMode: OverlayMode =
+      parsed.overlayMode === 'dialog' || parsed.overlayMode === 'drawer' ? parsed.overlayMode : 'auto'
+    const drawerWidth: DrawerWidth =
+      parsed.drawerWidth === 'narrow' || parsed.drawerWidth === 'wide' ? parsed.drawerWidth : 'medium'
+    return {
+      mode,
+      accent: typeof parsed.accent === 'string' && VALID_HEX.test(parsed.accent) ? parsed.accent : DEFAULT_ACCENT,
+      overlayMode,
+      drawerWidth,
+      closeOnClickModal:
+        typeof parsed.closeOnClickModal === 'boolean' ? parsed.closeOnClickModal : DEFAULT_INTERACTION.closeOnClickModal,
+      closeOnPressEscape:
+        typeof parsed.closeOnPressEscape === 'boolean'
+          ? parsed.closeOnPressEscape
+          : DEFAULT_INTERACTION.closeOnPressEscape,
+    }
   } catch {
-    return { mode: 'light', accent: DEFAULT_ACCENT }
+    return fallback
   }
 }
 
@@ -36,6 +64,10 @@ export const useThemeStore = defineStore('theme', () => {
   const prefs = loadPrefs()
   const mode = ref<ThemeMode>(prefs.mode)
   const accent = ref<string>(prefs.accent)
+  const overlayMode = ref<OverlayMode>(prefs.overlayMode)
+  const drawerWidth = ref<DrawerWidth>(prefs.drawerWidth)
+  const closeOnClickModal = ref(prefs.closeOnClickModal)
+  const closeOnPressEscape = ref(prefs.closeOnPressEscape)
   const drawerOpen = ref(false)
 
   // 跟随系统：监听配色偏好变化，system 模式下实时切换
@@ -46,6 +78,9 @@ export const useThemeStore = defineStore('theme', () => {
   })
 
   const isDark = computed(() => (mode.value === 'system' ? systemDark.value : mode.value === 'dark'))
+
+  /** 抽屉实际宽度（统一由偏好换算，组件禁硬编码） */
+  const drawerSize = computed(() => DRAWER_SIZE_MAP[drawerWidth.value])
 
   /** 写回根节点 CSS 变量 + dark class（Element 暗色主题以此为开关） */
   function apply() {
@@ -69,11 +104,19 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function save() {
-    localStorage.setItem(STORAGE_KEYS.theme, JSON.stringify({ mode: mode.value, accent: accent.value }))
+    const payload: ThemePrefs = {
+      mode: mode.value,
+      accent: accent.value,
+      overlayMode: overlayMode.value,
+      drawerWidth: drawerWidth.value,
+      closeOnClickModal: closeOnClickModal.value,
+      closeOnPressEscape: closeOnPressEscape.value,
+    }
+    localStorage.setItem(STORAGE_KEYS.theme, JSON.stringify(payload))
   }
 
   watch(
-    [mode, accent, isDark],
+    [mode, accent, overlayMode, drawerWidth, closeOnClickModal, closeOnPressEscape, isDark],
     () => {
       apply()
       save()
@@ -89,10 +132,22 @@ export const useThemeStore = defineStore('theme', () => {
     if (VALID_HEX.test(color)) accent.value = color
   }
 
-  /** 恢复默认：亮色 + 首个品牌强调色 */
+  function setOverlayMode(next: OverlayMode) {
+    overlayMode.value = next
+  }
+
+  function setDrawerWidth(next: DrawerWidth) {
+    drawerWidth.value = next
+  }
+
+  /** 恢复默认：亮色 + 首个品牌强调色 + 默认交互偏好 */
   function reset() {
     mode.value = 'light'
     accent.value = DEFAULT_ACCENT
+    overlayMode.value = DEFAULT_INTERACTION.overlayMode
+    drawerWidth.value = DEFAULT_INTERACTION.drawerWidth
+    closeOnClickModal.value = DEFAULT_INTERACTION.closeOnClickModal
+    closeOnPressEscape.value = DEFAULT_INTERACTION.closeOnPressEscape
   }
 
   function openDrawer() {
@@ -108,8 +163,15 @@ export const useThemeStore = defineStore('theme', () => {
     isDark,
     drawerOpen,
     presets,
+    overlayMode,
+    drawerWidth,
+    drawerSize,
+    closeOnClickModal,
+    closeOnPressEscape,
     setMode,
     setAccent,
+    setOverlayMode,
+    setDrawerWidth,
     reset,
     openDrawer,
   }

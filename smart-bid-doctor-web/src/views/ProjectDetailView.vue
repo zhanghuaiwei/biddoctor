@@ -228,6 +228,7 @@ import {
   type ParseStatus,
 } from '@/constants/enums'
 import { formatDateTime } from '@/utils/format'
+import { confirmAction } from '@/utils/confirm'
 import type { CheckItemOut, DocumentItem, ProjectOut, TaskOut } from '@/types'
 
 const route = useRoute()
@@ -300,6 +301,11 @@ async function genChecklist() {
 }
 
 async function startCompare() {
+  const ok = await confirmAction('本次对照将消耗 1 次对照次数，发起后不可撤回。', {
+    title: '发起双文件对照',
+    confirmText: '确认发起',
+  })
+  if (!ok) return
   try {
     const res = await startCompareApi(pid.value)
     ElMessage.success(`对照任务已创建（task #${res.task_id}），结果生成后可在本页查看`)

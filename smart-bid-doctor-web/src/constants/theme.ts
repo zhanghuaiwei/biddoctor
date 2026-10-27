@@ -29,3 +29,37 @@ export const ACCENT_PRESETS: readonly AccentPreset[] = [
 ]
 
 export const DEFAULT_ACCENT = ACCENT_PRESETS[0].color
+
+// ---- 弹层承载（内容少用弹窗、内容多用抽屉；形态可配置覆盖）----
+export const OVERLAY_MODES = ['auto', 'dialog', 'drawer'] as const
+export type OverlayMode = (typeof OVERLAY_MODES)[number]
+
+export const OVERLAY_MODE_LABELS: Record<OverlayMode, string> = {
+  auto: '按内容自动',
+  dialog: '弹窗',
+  drawer: '抽屉',
+}
+
+// ---- 抽屉宽度 ----
+export const DRAWER_WIDTHS = ['narrow', 'medium', 'wide'] as const
+export type DrawerWidth = (typeof DRAWER_WIDTHS)[number]
+
+export const DRAWER_WIDTH_LABELS: Record<DrawerWidth, string> = {
+  narrow: '窄',
+  medium: '中',
+  wide: '宽',
+}
+
+export const DRAWER_SIZE_MAP: Record<DrawerWidth, string> = {
+  narrow: '320px',
+  medium: '400px',
+  wide: '480px',
+}
+
+// ---- 交互偏好默认值 ----
+export const DEFAULT_INTERACTION = {
+  overlayMode: 'auto' as OverlayMode,
+  drawerWidth: 'medium' as DrawerWidth,
+  closeOnClickModal: true,
+  closeOnPressEscape: true,
+}

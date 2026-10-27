@@ -84,7 +84,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialog" title="新建检查项目" width="min(440px, 92vw)">
+    <OverlayPanel v-model="dialog" title="新建检查项目" desc="创建后上传招标与投标文件即可开始自查" content-size="sm">
       <el-form label-position="top" class="create-form">
         <el-form-item label="项目名称">
           <el-input v-model="form.name" placeholder="如：xx医院设备采购-2026-10" @keyup.enter="create" />
@@ -105,7 +105,7 @@
         <el-button @click="dialog = false">取消</el-button>
         <el-button type="primary" :loading="creating" @click="create">创建</el-button>
       </template>
-    </el-dialog>
+    </OverlayPanel>
   </div>
 </template>
 
@@ -114,6 +114,7 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { createProject, deleteProject, listProjects } from '@/api/projects'
 import { notifyApiError } from '@/api/client'
+import OverlayPanel from '@/components/OverlayPanel.vue'
 import {
   INDUSTRIES,
   INDUSTRY_LABELS,
@@ -124,6 +125,7 @@ import {
   type ProjectStatus,
 } from '@/constants/enums'
 import { formatDateTime } from '@/utils/format'
+import { confirmAction } from '@/utils/confirm'
 import type { ProjectOut } from '@/types'
 
 const items = ref<ProjectOut[]>([])
@@ -170,15 +172,12 @@ async function create() {
 }
 
 async function remove(row: ProjectOut) {
-  try {
-    await ElMessageBox.confirm(`确认删除项目「${row.name}」？删除后本项目不再出现在列表。`, '删除确认', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    })
-  } catch {
-    return // 用户取消
-  }
+  const ok = await confirmAction('删除后本项目不再出现在列表，当月免费名额不因删除释放。', {
+    title: `删除项目「${row.name}」`,
+    confirmText: '删除',
+    danger: true,
+  })
+  if (!ok) return
   try {
     await deleteProject(row.id)
     ElMessage.success('已删除（当月免费名额不因删除释放）')

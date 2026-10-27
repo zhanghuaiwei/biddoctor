@@ -137,6 +137,7 @@ import { notifyApiError } from '@/api/client'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TAGS, type OrderStatus } from '@/constants/enums'
 import { SKUS, type SkuInfo } from '@/constants/skus'
 import { formatDate, formatDateTime } from '@/utils/format'
+import { confirmAction } from '@/utils/confirm'
 import type { OrderOut, QuotaOut } from '@/types'
 
 const quota = ref<QuotaOut>({ free_left: 0, packs: [] })
@@ -171,6 +172,11 @@ async function load() {
 }
 
 async function order(sku: SkuInfo) {
+  const ok = await confirmAction(`将以人工转账方式购买「${sku.title}」，金额 ¥${sku.priceCny}，核销后次数自动发放。`, {
+    title: '确认下单',
+    confirmText: '确认下单',
+  })
+  if (!ok) return
   try {
     const res = await createOrder(sku.code)
     // 纯文本拼接订单信息（不使用 HTML 注入）

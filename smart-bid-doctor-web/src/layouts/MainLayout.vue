@@ -147,6 +147,7 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import QuotaBadge from '@/components/QuotaBadge.vue'
+import { confirmAction } from '@/utils/confirm'
 
 const router = useRouter()
 const route = useRoute()
@@ -167,7 +168,12 @@ const pageTitle = computed(() =>
 
 const initial = computed(() => (email.value ? email.value.slice(0, 1).toUpperCase() : 'U'))
 
-function logout() {
+async function logout() {
+  const ok = await confirmAction('退出后需重新登录才能继续查看项目与报告。', {
+    title: '退出登录',
+    confirmText: '退出',
+  })
+  if (!ok) return
   useAuthStore().logout()
   router.push('/login')
 }
