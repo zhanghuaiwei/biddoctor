@@ -113,7 +113,7 @@ make test-int    # 全量（需 FJ_TEST_DATABASE_URL，见 tests/conftest.py）
 | 背景与技术选型 | `README.md` |
 | 错误码/枚举 | `app/core/errors.py`、`app/core/enums.py`、前端 `src/constants/enums.ts`；守卫 `tests/test_errors_registry.py` |
 | 新端点 | `app/api/` 同级现有端点 + `tests/test_smoke.py`（三件套） |
-| 表/迁移 | `app/models/`（DDL 唯一来源）+ alembic 现有迁移 |
+| 表/迁移 | `app/models/`（DDL 唯一来源）+ alembic 现有迁移；全量功能数据库设计（含未实装业务表/平台 sys_* 表/扩展列）见 `db/` 两份 SQL（可执行源）与 03-数据库设计 v2.0，平台化管理与运维设计见 05 文档，新表实装时从 db/ 设计落 models/ + 迁移 |
 | 异步任务 | `app/worker/`（SKIP LOCKED + 状态机 + 心跳） |
 | 前端改动 | `src/api/`（client 契约）、`src/constants/`、`src/composables/` |
 | 测试环境 | `tests/conftest.py`（FJ_TEST_DATABASE_URL） |
