@@ -32,7 +32,7 @@
 | 对象存储 | 本地磁盘 sha256 寻址 + 去重（接口已抽象） | 二期换 OSS/S3 |
 | 登录认证 | 邮箱验证码（Resend/SMTP 自选），JWT 7 天 | 主体注册后加手机号二通道 |
 
-依赖版本策略：后端 `requirements.txt` **精确 pin（`==`）**，升级 = 改版本 → 集成测试全绿 → CI 绿 → 合并；前端版本锁在 `package.json` 的 `packageManager` 字段。
+依赖版本策略：后端用 **uv** 管理（`pyproject.toml` 声明 + `uv.lock` 锁文件入库，精确 pin `==`），升级 = 改 pyproject → `uv lock` → 集成测试全绿 → CI 绿 → 合并；前端版本锁在 `package.json` 的 `packageManager` 字段，lockfile 为 `pnpm-lock.yaml`。
 
 ## 三、架构选型
 
@@ -128,7 +128,8 @@ smart-bid-doctor/
 
 | 依赖 | 版本 | 说明 |
 |---|---|---|
-| Python | **3.12+** | 依赖精确 pin 于 `smart-bid-doctor-api/requirements.txt` |
+| Python | **3.12+** | 依赖由 uv 管理：`pyproject.toml` 声明 + `uv.lock` 锁定 |
+| uv | **0.12+** | `brew install uv`（或 `curl -LsSf https://astral.sh/uv/install.sh \| sh`） |
 | PostgreSQL | **16**（含 pgvector、pg_trgm 扩展） | dev 镜像 `pgvector/pgvector:pg16` |
 | Node.js | **≥ 18** | Vite 5 要求 |
 | pnpm | **10.34.9**（`packageManager` 锁定） | `corepack enable pnpm` 启用；禁混用 npm |
@@ -139,13 +140,13 @@ smart-bid-doctor/
 ```bash
 # ── 后端（首次）──
 cd smart-bid-doctor-api
-python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+uv sync                                # 按 uv.lock 精确还原环境（含 dev 组；替代 venv+pip）
 # 创建 .env.development 并按需修改（dev 默认值即可跑；个人覆盖用 .env.development.local）
 # 键清单见下方「八、配置说明」；env 文件一律不入库
-docker compose up -d db               # 起 PostgreSQL(pgvector)
-.venv/bin/python scripts/bootstrap.py # 建扩展 + 迁移（生产同样执行本脚本）
-.venv/bin/uvicorn app.main:app --reload         # API :8000，OpenAPI 文档 /api/docs
-.venv/bin/python -m app.worker.runner           # 任务执行器（另开终端）
+docker compose up -d db                   # 起 PostgreSQL(pgvector)
+uv run python scripts/bootstrap.py        # 建扩展 + 迁移（生产同样执行本脚本）
+uv run uvicorn app.main:app --reload      # API :8000，OpenAPI 文档 /api/docs
+uv run python -m app.worker.runner        # 任务执行器（另开终端）
 
 # ── 前端 ──
 cd smart-bid-doctor-web

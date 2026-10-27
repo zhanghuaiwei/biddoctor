@@ -3,6 +3,37 @@ name = "smart-bid-doctor-api"
 version = "0.1.0"
 description = "标书废检 Agent 后端（骨架：框架 + 非业务 CRUD）"
 requires-python = ">=3.12"
+# 依赖唯一来源（uv 管理，uv.lock 锁定）；版本策略与升级流程见根目录 AGENTS.md「依赖」行
+dependencies = [
+    "fastapi==0.162.0",
+    "uvicorn[standard]==0.54.0",
+    "SQLAlchemy==2.1.6",
+    "alembic==1.20.1",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.1",
+    "python-dotenv==1.2.4",
+    "email-validator==2.3.0",
+    "PyJWT==2.15.1",
+    "python-multipart==0.0.32",
+    "pypdf==6.21.2",
+    "pgvector==0.5.1",
+    "psycopg[binary]==3.3.6",
+    # M1 解析引擎启用 OCR 时再安装（体积大，见 02 §2）：
+    # "paddlepaddle==3.0.0",
+    # "paddleocr==3.0.0",
+]
+
+# 开发/测试依赖（PEP 735 组；生产镜像 uv sync --no-dev 不安装）
+[dependency-groups]
+dev = [
+    "httpx==0.28.1",
+    "pytest==9.1.1",
+    "ruff==0.17.2",
+]
+
+# 应用以源码直跑（uvicorn app.main:app），不构建安装项目自身
+[tool.uv]
+package = false
 
 [tool.ruff]
 line-length = 100
