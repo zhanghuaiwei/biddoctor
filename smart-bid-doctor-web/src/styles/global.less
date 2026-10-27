@@ -1,9 +1,19 @@
 // 全局基础样式（less）；变量经 vite additionalData 自动注入（variables.less）
 @import (reference) './variables.less';
 
-// Element Plus 全局基调微调：圆角对齐设计令牌
-:root {
+// Element Plus 全局基调微调：圆角对齐设计令牌；主色映射品牌强调色（含完整色阶，
+// 悬停取 light-3、按下取 dark-2 由 Element 内部消费），禁用默认蓝与品牌割裂。
+// 选择器用 html:root 抬升优先级：按需引入时 Element 样式可能晚于本文件注入，
+// 同为 :root 时后注入者胜出，抬高一级特指度可保证覆盖稳定生效
+html:root {
   --el-border-radius-base: @radius - 2px;
+  --el-color-primary: @c-accent;
+  --el-color-primary-light-3: @c-accent-light-3;
+  --el-color-primary-light-5: @c-accent-light-5;
+  --el-color-primary-light-7: @c-accent-light-7;
+  --el-color-primary-light-8: @c-accent-light-8;
+  --el-color-primary-light-9: @c-accent-light-9;
+  --el-color-primary-dark-2: @c-accent-dark-2;
 }
 
 body {
@@ -63,6 +73,48 @@ video {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+// 级联进场：子元素依次上浮淡入（登录页品牌区卖点列表等），间隔取 @dur-fast 整数倍
+.cascade-in > * {
+  animation: rise-in @dur-slow @ease-out both;
+
+  &:nth-child(2) {
+    animation-delay: @dur-fast;
+  }
+
+  &:nth-child(3) {
+    animation-delay: @dur-fast * 2;
+  }
+
+  &:nth-child(4) {
+    animation-delay: @dur-fast * 3;
+  }
+
+  &:nth-child(5) {
+    animation-delay: @dur-fast * 4;
+  }
+}
+
+// 氛围漂浮：登录页品牌区光晕等装饰元素的缓慢漂移（alternate 往返，不跳变）
+@keyframes float-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(26px, -20px, 0) scale(1.08);
+  }
+}
+
+// 可达性：用户系统开启减弱动态效果时，全局停用动画/过渡
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

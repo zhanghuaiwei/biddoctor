@@ -19,6 +19,22 @@
 @page-max: 1080px;      // 内容最大宽度
 @page-pad: 16px;        // 移动端页边距
 @radius: 8px;
+@radius-lg: 14px;       // 大卡片/品牌面板
+
+// ---- 品牌展示（登录页等品牌区渐变与光晕，均由此取色） ----
+@c-brand-grad: linear-gradient(160deg, #1e3250 0%, #16233b 55%, #101a2c 100%);
+@c-brand-glow-accent: fade(#be3b2e, 38%);   // 品牌区强调色光晕
+@c-brand-glow-cool: fade(#4a7bc8, 26%);     // 品牌区冷色光晕
+@c-brand-text: #e8eef6;                     // 深色底上的主文字
+@c-brand-text-sub: rgba(201, 212, 228, 0.72); // 深色底上的次要文字
+
+// ---- 强调色阶（Element Plus 主色映射用，light-N = 混白 N*10%） ----
+@c-accent-light-3: mix(#ffffff, @c-accent, 30%);
+@c-accent-light-5: mix(#ffffff, @c-accent, 50%);
+@c-accent-light-7: mix(#ffffff, @c-accent, 70%);
+@c-accent-light-8: mix(#ffffff, @c-accent, 80%);
+@c-accent-light-9: mix(#ffffff, @c-accent, 90%);
+@c-accent-dark-2: mix(#000000, @c-accent, 20%);
 
 // ---- 导航（侧边栏/抽屉菜单） ----
 @c-nav-bg: #16233b;        // 侧栏底色
@@ -30,9 +46,11 @@
 @shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
 @shadow-md: 0 4px 12px rgba(16, 24, 40, 0.1);
 @shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+@shadow-accent: 0 6px 16px fade(@c-accent, 32%); // CTA 悬停强调光晕
 
 // ---- 动效（页面过渡与交互动画统一取用） ----
 @ease-out: cubic-bezier(0.22, 0.61, 0.36, 1); // 先快后慢，丝滑收场
 @dur-fast: 0.15s;   // 悬停/按下等即时反馈
 @dur-base: 0.25s;   // 卡片、菜单、路由切换
 @dur-slow: 0.4s;    // 进场强调
+@dur-ambient: 9s;   // 氛围装饰慢速漂移
