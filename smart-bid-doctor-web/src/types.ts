@@ -1,4 +1,4 @@
-/** 后端 API DTO 类型（与 feijian-api/app/schemas 对齐） */
+/** 后端 API DTO 类型（与 smart-bid-doctor-api/app/schemas 对齐） */
 
 export interface UserOut {
   id: number

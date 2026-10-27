@@ -1,5 +1,5 @@
 """集成测试夹具：需要真实 PostgreSQL（pgvector）。
-设置 FJ_TEST_DATABASE_URL（如 postgresql+psycopg://feijian:feijian@localhost:5432/feijian_test）启用；
+设置 FJ_TEST_DATABASE_URL（如 postgresql+psycopg://smart-bid-doctor:smart-bid-doctor@localhost:5432/smart-bid-doctor_test）启用；
 未设置时集成测试自动跳过（CI 中由 postgres service 提供）。"""
 
 import os

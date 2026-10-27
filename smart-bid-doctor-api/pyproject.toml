@@ -1,5 +1,5 @@
 [project]
-name = "feijian-api"
+name = "smart-bid-doctor-api"
 version = "0.1.0"
 description = "标书废检 Agent 后端（骨架：框架 + 非业务 CRUD）"
 requires-python = ">=3.12"

@@ -2,9 +2,9 @@ services:
   db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: feijian
-      POSTGRES_PASSWORD: feijian
-      POSTGRES_DB: feijian
+      POSTGRES_USER: smart-bid-doctor
+      POSTGRES_PASSWORD: smart-bid-doctor
+      POSTGRES_DB: smart-bid-doctor
     volumes:
       - ./data/pg:/var/lib/postgresql/data
     ports:
@@ -15,7 +15,7 @@ services:
   api:
     build: .
     environment:
-      FJ_DATABASE_URL: postgresql+psycopg://feijian:feijian@db:5432/feijian
+      FJ_DATABASE_URL: postgresql+psycopg://smart-bid-doctor:smart-bid-doctor@db:5432/smart-bid-doctor
       FJ_JWT_SECRET: change-me
     depends_on:
       - db
@@ -27,7 +27,7 @@ services:
   worker:
     build: .
     environment:
-      FJ_DATABASE_URL: postgresql+psycopg://feijian:feijian@db:5432/feijian
+      FJ_DATABASE_URL: postgresql+psycopg://smart-bid-doctor:smart-bid-doctor@db:5432/smart-bid-doctor
     depends_on:
       - db
     restart: always

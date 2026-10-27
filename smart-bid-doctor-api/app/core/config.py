@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     env: str = "dev"  # dev | prod
-    database_url: str = "postgresql+psycopg://feijian:feijian@localhost:5432/feijian"
+    database_url: str = "postgresql+psycopg://smart-bid-doctor:smart-bid-doctor@localhost:5432/smart-bid-doctor"
     jwt_secret: str = "dev-secret-change-me"
     jwt_expire_days: int = 7
     upload_dir: str = "./data/uploads"

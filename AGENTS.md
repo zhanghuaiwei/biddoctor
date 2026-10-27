@@ -1,12 +1,12 @@
-# AGENTS.md — BidDoctor 工程约定（面向所有 AI 编码工具）
+# AGENTS.md — smart-bid-doctor 工程约定（面向所有 AI 编码工具）
 
 > 适用工具：Claude Code / Codex / Cursor / WorkBuddy 等任何在本仓库工作的 AI。
-> 本文件是项目工程范式的**开源精简版**；权威完整版为内部 skill `biddoctor-engineering`（含留痕映射与反哺机制）。
+> 本文件是项目工程范式的**开源精简版**；权威完整版为内部 skill `smart-bid-doctor-engineering`（含留痕映射与反哺机制）。
 > 冲突时以设计文档（01-04）与代码现状为准，其次本文件。
 
 ## 项目一句话
 
-BidDoctor（代号 feijian）：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + PostgreSQL 16(pgvector) 后端 + Vue3 SPA；队列用 PG SKIP LOCKED，不引入 Redis/Celery/ES。
+smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + PostgreSQL 16(pgvector) 后端 + Vue3 SPA；队列用 PG SKIP LOCKED，不引入 Redis/Celery/ES。
 
 ## 硬性禁区
 
@@ -44,7 +44,7 @@ BidDoctor（代号 feijian）：标书废标风险 AI 自查。FastAPI + SQLAlch
 ## 测试与验证
 
 ```bash
-cd feijian-api
+cd smart-bid-doctor-api
 make lint        # ruff，提交前必须全绿
 make test        # 单测（无需 DB）
 make test-int    # 全量（需 FJ_TEST_DATABASE_URL，见 tests/conftest.py）

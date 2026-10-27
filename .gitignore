@@ -26,7 +26,7 @@ dist/
 
 
 # vite 配置加载临时文件
-feijian-web/vite.config.ts.timestamp-*.mjs
+smart-bid-doctor-web/vite.config.ts.timestamp-*.mjs
 
 # vite 配置加载临时文件
-feijian-web/vite.config.ts.timestamp-*.mjs
+smart-bid-doctor-web/vite.config.ts.timestamp-*.mjs

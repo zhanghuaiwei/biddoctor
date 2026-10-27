@@ -14,7 +14,7 @@ from app.core.logging import request_id_var, setup_logging
 
 def create_app() -> FastAPI:
     setup_logging()
-    app = FastAPI(title="feijian-api", version="0.1.0", docs_url="/api/docs")
+    app = FastAPI(title="smart-bid-doctor-api", version="0.1.0", docs_url="/api/docs")
     s = get_settings()
     # add_middleware 后加的在外层。期望请求流：
     # request_id → security_headers → CORS → RateLimit → route

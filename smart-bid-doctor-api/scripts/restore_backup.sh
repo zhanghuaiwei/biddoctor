@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # 恢复演练（03 §6：make restore-backup FILE=… 一键验证）
-# 用法: ./scripts/restore_backup.sh /data/backups/feijian-20261026-033000.dump [目标库名]
+# 用法: ./scripts/restore_backup.sh /data/backups/smart-bid-doctor-20261026-033000.dump [目标库名]
 set -euo pipefail
 
-FILE="${1:?用法: restore_backup.sh <dump文件> [目标库名(默认 feijian_restore)]}"
-TARGET="${2:-feijian_restore}"
+FILE="${1:?用法: restore_backup.sh <dump文件> [目标库名(默认 smart-bid-doctor_restore)]}"
+TARGET="${2:-smart-bid-doctor_restore}"
 PGHOST="${PGHOST:-localhost}"
 PGPORT="${PGPORT:-5432}"
-PGUSER="${PGUSER:-feijian}"
+PGUSER="${PGUSER:-smart-bid-doctor}"
 
 echo "[$(date -Is)] restoring ${FILE} -> database ${TARGET}"
 # 恢复演练落在独立库，不动线上库；演练后自行 drop

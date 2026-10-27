@@ -1,6 +1,6 @@
 """存储抽象（01·D2/D7：二期换 OSS/S3 时实现同接口替换，不改业务代码）。
 
-约定（skill: biddoctor-engineering）：新增存储后端必须实现 Storage 协议，
+约定（skill: smart-bid-doctor-engineering）：新增存储后端必须实现 Storage 协议，
 save() 返回 (sha256, stored_path)，路径不可猜测（内容寻址），天然幂等。
 """
 

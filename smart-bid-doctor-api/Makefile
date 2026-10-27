@@ -1,4 +1,4 @@
-# BidDoctor 后端常用命令（骨架版）
+# smart-bid-doctor 后端常用命令（骨架版）
 # 与设计文档对应关系见各 target 注释
 
 .PHONY: bootstrap test test-int lint fmt seed-admin backup restore-backup daily-report
@@ -13,7 +13,7 @@ test:
 
 # 全量测试（需要 PostgreSQL+pgvector，03 §4：集成测试走独立库）
 test-int:
-	FJ_TEST_DATABASE_URL=$${FJ_TEST_DATABASE_URL:-postgresql+psycopg://postgres@localhost:5433/feijian_test} \
+	FJ_TEST_DATABASE_URL=$${FJ_TEST_DATABASE_URL:-postgresql+psycopg://postgres@localhost:5433/smart-bid-doctor_test} \
 		python -m pytest tests -q
 
 lint:

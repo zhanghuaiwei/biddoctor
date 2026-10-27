@@ -1,6 +1,6 @@
 """审计日志：写失败不阻断主业务（审计与业务解耦，失败仅记服务端日志）。
 
-留痕规范（skill: biddoctor-engineering）：所有审计 detail 自动关联 request_id，
+留痕规范（skill: smart-bid-doctor-engineering）：所有审计 detail 自动关联 request_id，
 使 audit_logs ↔ 结构化日志 ↔ tasks.task_id 可互查，形成功能全生命周期留痕链。
 """
 

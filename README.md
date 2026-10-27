@@ -1,4 +1,4 @@
-# BidDoctor · 标书废检 Agent
+# smart-bid-doctor · 标书废检 Agent
 
 > **Give your bid a health check before opening.** 面向中国招投标场景的投标废标风险 AI 自查工具。
 > An AI self-check tool that helps bidders catch disqualification (废标) risks before bid opening.
@@ -6,14 +6,14 @@
 > 创建：2026-10-24 · 状态：MVP 骨架就绪，业务引擎 M1 接入中 · License: MIT
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/zhanghuaiwei/biddoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/zhanghuaiwei/biddoctor/actions/workflows/ci.yml)
+[![CI](https://github.com/zhanghuaiwei/smart-bid-doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/zhanghuaiwei/smart-bid-doctor/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-MVP%20skeleton-blue)
 ![Python](https://img.shields.io/badge/python-3.12+-informational)
 ![Vue](https://img.shields.io/badge/vue-3.x-42b883)
 
-**BidDoctor** 只做中立的「检」，不做「写」：上传招标文件（PDF），自动抽取资格性/符合性/★号强制/报价/签章密封五类废标相关条款，生成结构化《废标风险检查清单》，每条结论附原文页码溯源；后续版本支持招标×投标双文件逐条对照与红黄绿分级报告。
+**smart-bid-doctor** 只做中立的「检」，不做「写」：上传招标文件（PDF），自动抽取资格性/符合性/★号强制/报价/签章密封五类废标相关条款，生成结构化《废标风险检查清单》，每条结论附原文页码溯源；后续版本支持招标×投标双文件逐条对照与红黄绿分级报告。
 
-`feijian`（废检拼音）为本仓库代码代号，目录 `feijian-api` / `feijian-web` / `feijian-site` 沿用。
+目录 `smart-bid-doctor-api` / `smart-bid-doctor-web` / `smart-bid-doctor-site` 与项目同名。
 
 ## 本次 MVP 边界（已确认）
 
@@ -60,13 +60,13 @@
 ## 代码仓库结构
 
 ```
-biddoctor/
+smart-bid-doctor/
 ├── AGENTS.md        # AI 编码工具工程约定（分层/事务/留痕/测试范式，所有 Agent 必读）
-├── feijian-api/     # FastAPI 后端：core/models/schemas/services/api 分层
+├── smart-bid-doctor-api/     # FastAPI 后端：core/models/schemas/services/api 分层
 │                    #   + worker 任务执行器（SKIP LOCKED）+ alembic 迁移
 │                    #   app/engine/（解析/抽取/对照/报告）与 app/llm/（Provider）为接口占位
-├── feijian-web/     # Vue3 + Vite + Element Plus 应用 SPA（登录/项目/上传/清单/次数订单）
-├── feijian-site/    # 静态落地页（nginx 直出，保搜索引擎收录）
+├── smart-bid-doctor-web/     # Vue3 + Vite + Element Plus 应用 SPA（登录/项目/上传/清单/次数订单）
+├── smart-bid-doctor-site/    # 静态落地页（nginx 直出，保搜索引擎收录）
 ├── deploy/          # 生产 nginx 配置（静态前端 + /api 反代）
 └── LICENSE          # MIT
 ```
@@ -78,7 +78,7 @@ biddoctor/
 
 ```bash
 # 后端（首次）
-cd feijian-api
+cd smart-bid-doctor-api
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 docker compose up -d db                # 起 PostgreSQL(pgvector)
 .venv/bin/python scripts/bootstrap.py  # 建扩展+迁移（生产同样执行本脚本）
@@ -90,15 +90,15 @@ docker compose up -d db                # 起 PostgreSQL(pgvector)
 .venv/bin/ruff check app tests scripts   # lint
 
 # 前端（pnpm，版本见 package.json packageManager；corepack enable pnpm 启用）
-cd feijian-web && pnpm install
+cd smart-bid-doctor-web && pnpm install
 pnpm build        # vite build + vue-tsc 类型门禁
 pnpm dev          # :5173，/api 代理到 8000
-# 落地页：feijian-site/index.html 静态部署即可
+# 落地页：smart-bid-doctor-site/index.html 静态部署即可
 
 # dev 环境登录验证码固定为 123456（FJ_ENV=dev）
 ```
 
-运维（`feijian-api/` 下，与 03/04 设计文档对应）：
+运维（`smart-bid-doctor-api/` 下，与 03/04 设计文档对应）：
 
 ```bash
 make bootstrap        # 初始化库（扩展+迁移）
@@ -124,7 +124,7 @@ make restore-backup FILE=/data/backups/xxx.dump   # 恢复演练（独立库）
 
 ## 免责声明
 
-BidDoctor 输出为**辅助人工复核工具**，不构成任何「保证不废标」承诺；每条结论均附原文出处，高危项须人工确认。使用者应遵守所在采购项目的保密与合规要求。
+smart-bid-doctor 输出为**辅助人工复核工具**，不构成任何「保证不废标」承诺；每条结论均附原文出处，高危项须人工确认。使用者应遵守所在采购项目的保密与合规要求。
 
 ## License
 
