@@ -38,6 +38,26 @@
 
 **单机单库一体化**：队列（SKIP LOCKED）、向量检索（pgvector HNSW）、模糊文本检索（pg_trgm）、审计与账本全部落在 PostgreSQL 一个实例内，不引入 Redis / Celery / ES / 独立向量库——以最小运维面支撑 MVP，各组件均为接口抽象，量大可平滑替换。
 
+**Redis 替代方案**（硬性约定：MVP 不引入 Redis，其传统职责由 PG/进程内承接）：
+
+| Redis 典型职责 | 本项目实现 | 位置 |
+|---|---|---|
+| 任务队列 | `tasks` 表 + `FOR UPDATE SKIP LOCKED` 认领 + 状态机/心跳/退避重试 | `app/worker/runner.py` |
+| 分布式锁 / 计数扣减 | `WITH FOR UPDATE` 行锁（配额）；一次性凭据原子 UPDATE + rowcount | services 层（事务范式） |
+| 限流 | 进程内滑动窗口单例（dict+deque，单实例部署下天然准确） | `app/core/ratelimit.py` |
+| 会话 / 登录态 | 无状态 JWT（7 天过期），登出仅本地清除，无黑名单需求 | `app/core/security.py` |
+| 向量检索 | pgvector（HNSW 索引） | PG 扩展 |
+| 模糊文本检索 | pg_trgm + GIN 索引 | PG 扩展 |
+| 缓存 | 不做——MVP 无热点读场景，过早缓存引入失效一致性负担 | — |
+| Pub/Sub（预留） | PG `LISTEN/NOTIFY` 可替代轮询唤醒 worker（当前轮询间隔 3s 已够） | 未启用 |
+
+**引入 Redis 的演进信号**（出现其一再评估，禁止提前预建）：
+
+1. api 多实例部署且需要准确的分布式限流/锁——内存滑窗各实例独立计数会失准
+2. 热点读达到千级 QPS（如报告被大量并发查看）——届时加缓存层
+3. 任务吞吐到万级/天，或需要延迟队列/优先级队列——SKIP LOCKED 轮询间隔成为瓶颈
+4. 需要毫秒级 Pub/Sub 扇出大量客户端
+
 ```
 请求链路（同步）：
 浏览器 ──HTTPS──▶ nginx（静态 SPA/落地页 + /api 反代，透传真实 IP）

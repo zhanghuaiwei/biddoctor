@@ -48,7 +48,7 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 1. **不要实现业务引擎**：`app/engine/`（解析/抽取/对照/报告）与 `app/llm/zhipu.py` 真实调用是 M1/M2 范围，保持 501/桩/TODO，除非 issue 明确要求。
 2. **不要物理删除用户数据**：只允许 `deleted_at` 软删；硬删仅限 `worker/handlers/purge.py` 生命周期任务。
 3. **不要绕过统一错误体**：业务错误一律 `raise AppError(status, "UPPER_SNAKE_CODE", "中文提示")`，响应恒为 `{"error": {"code", "message"}}`。
-4. **不要新增基础设施组件**（Redis/Celery/ES/独立向量库）——架构决策见 README 技术选型表。
+4. **不要新增基础设施组件**（Redis/Celery/ES/独立向量库）——架构决策见 README 技术选型表；替代实现：队列=PG SKIP LOCKED、锁/计数=行锁与原子 UPDATE、限流=进程内滑窗、会话=无状态 JWT、向量=pgvector、检索=pg_trgm（完整映射与引入信号见 README「Redis 替代方案」），演进信号出现前禁止预建。
 
 ## 代码范式
 
