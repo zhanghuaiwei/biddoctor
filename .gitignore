@@ -5,8 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# 环境 / 数据
+# 环境 / 数据（env 文件一律不入库，含 .local 个人覆盖；键清单见 README 配置章节）
 .env
+.env.*
 data/
 
 # Node
@@ -25,9 +26,6 @@ dist/
 *.doc
 *.pptx
 
-
-# vite 配置加载临时文件
-smart-bid-doctor-web/vite.config.ts.timestamp-*.mjs
 
 # vite 配置加载临时文件
 smart-bid-doctor-web/vite.config.ts.timestamp-*.mjs

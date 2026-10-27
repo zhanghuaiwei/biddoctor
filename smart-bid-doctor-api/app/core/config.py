@@ -1,4 +1,4 @@
-"""应用配置（单一 Settings 出口，前缀 FJ_，全键清单见 .env.example）。
+"""应用配置（单一 Settings 出口，前缀 FJ_，全键清单见根目录 README「配置说明」）。
 
 范式约束：
 - SKU 目录/模型名/供应商地址等业务参数一律进配置不进代码（换供应商不改代码）；
@@ -8,10 +8,27 @@
 """
 
 import json
+import os
 from functools import lru_cache
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
+
+# 文件名映射：settings.env 值域（dev|prod，业务逻辑依赖，见 auth_svc/_prod_guard）
+# → dotenv 文件后缀（与前端 Vite 体系同名对齐）；test 仅本地/CI 测试用
+_ENV_FILE_BY_ENV = {"dev": "development", "prod": "production", "test": "test"}
+
+
+def _env_file_stack() -> tuple[str, ...]:
+    """dotenv 加载栈（后者优先级高）：.env < .env.{development|production|test} < .env.{...}.local。
+
+    - 环境名取 OS 环境变量 FJ_ENV（缺省 dev）；真实 OS 环境变量始终高于所有文件
+      （pydantic-settings 固有语义），与 docker-compose environment 注入方式完全兼容；
+    - 容器内无任何 .env 文件时栈中文件静默跳过，生产注入路径不受影响；
+    - FJ_ENV 必须在 import app 前可从 OS 环境读到（conftest 已按此约定 setdefault）。
+    """
+    name = _ENV_FILE_BY_ENV.get(os.environ.get("FJ_ENV", "dev"), "development")
+    return (".env", f".env.{name}", f".env.{name}.local")
 
 
 class Settings(BaseSettings):
@@ -54,7 +71,7 @@ class Settings(BaseSettings):
     def skus(self) -> dict:
         return json.loads(self.sku_catalog)
 
-    model_config = {"env_prefix": "FJ_", "env_file": ".env", "extra": "ignore"}
+    model_config = {"env_prefix": "FJ_", "env_file": _env_file_stack(), "extra": "ignore"}
 
 
 @lru_cache

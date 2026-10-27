@@ -140,7 +140,8 @@ smart-bid-doctor/
 # ── 后端（首次）──
 cd smart-bid-doctor-api
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-cp .env.example .env                  # 按需修改（dev 默认即可跑）
+# 创建 .env.development 并按需修改（dev 默认值即可跑；个人覆盖用 .env.development.local）
+# 键清单见下方「八、配置说明」；env 文件一律不入库
 docker compose up -d db               # 起 PostgreSQL(pgvector)
 .venv/bin/python scripts/bootstrap.py # 建扩展 + 迁移（生产同样执行本脚本）
 .venv/bin/uvicorn app.main:app --reload         # API :8000，OpenAPI 文档 /api/docs
@@ -177,7 +178,18 @@ pnpm dev                              # :5173，/api 代理到 8000
 
 ## 八、配置说明
 
-配置经环境变量注入，前缀 `FJ_`，全部键与 `app/core/config.py` Settings 一一对应（全清单见 [`smart-bid-doctor-api/.env.example`](smart-bid-doctor-api/.env.example)）。生产经部署平台注入，勿提交 `.env`。
+配置经环境变量注入，前缀 `FJ_`，全部键与 `app/core/config.py` Settings 一一对应（全清单见下表）。
+
+**多环境文件体系**（前后端同名对齐，env 文件一律不入库）：
+
+```
+加载栈（后者优先级高，OS 环境变量始终最高）：
+.env → .env.development | .env.production | .env.test → .env.{...}.local
+```
+
+- 后端：文件栈由 `FJ_ENV`（OS 环境变量，缺省 dev）选择——`dev→development`、`prod→production`、`test→test`；`.env.development.local` 为个人本机覆盖；`.env.test` 由 `tests/conftest.py` 读取（如 `FJ_TEST_DATABASE_URL`）
+- 前端：Vite 原生语义，仅 `VITE_` 前缀变量暴露给客户端（**严禁放密钥**）；dev 代理地址 `VITE_API_PROXY_TARGET` 可在 `.env.development.local` 按本机端口覆盖
+- 生产：容器内通常无任何 env 文件，全部经 `docker-compose.prod.yml` 的 `environment` 段以真实环境变量注入（与文件栈语义兼容）
 
 | 键 | 默认/示例 | 说明 |
 |---|---|---|
@@ -193,7 +205,13 @@ pnpm dev                              # :5173，/api 代理到 8000
 | `FJ_SKU_CATALOG` | JSON | 商品价目（订单 SKU 取值域由此驱动） |
 | `FJ_ZHIPU_API_KEY` / `FJ_ZHIPU_BASE_URL` | — / 智谱 v4 | M1 接入 LLM 时配置（OpenAI 兼容） |
 | `FJ_LLM_MODEL_HEAVY` / `FJ_LLM_MODEL_LIGHT` | `glm-4.6` / `glm-4.5-flash` | 重任务（抽取/判定）/ 轻任务（分类/兜底） |
-| `FJ_TEST_DATABASE_URL` | — | 集成测试独立库（仅本地/CI 用） |
+| `FJ_TEST_DATABASE_URL` | — | 集成测试独立库（仅本地/CI 用，读自 `.env.test` / OS 环境变量） |
+
+前端构建期变量（`smart-bid-doctor-web/`，仅 `VITE_` 前缀暴露给客户端，严禁放密钥）：
+
+| 键 | 默认/示例 | 说明 |
+|---|---|---|
+| `VITE_API_PROXY_TARGET` | `http://localhost:8000` | dev 代理后端地址（`.env.development.local` 可按本机端口覆盖） |
 
 ## 九、生产部署
 

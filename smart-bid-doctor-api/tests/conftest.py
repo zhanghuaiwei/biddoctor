@@ -1,10 +1,19 @@
 """集成测试夹具：需要真实 PostgreSQL（pgvector）。
-设置 FJ_TEST_DATABASE_URL（如 postgresql+psycopg://smart-bid-doctor:smart-bid-doctor@localhost:5432/smart-bid-doctor_test）启用；
-未设置时集成测试自动跳过（CI 中由 postgres service 提供）。"""
+FJ_TEST_DATABASE_URL 优先级：OS 环境变量 > .env.test.local > .env.test（dotenv，不入库）
+（如 postgresql+psycopg://smart-bid-doctor:smart-bid-doctor@localhost:5432/smart-bid-doctor_test）；
+均未设置时集成测试自动跳过（CI 中由 postgres service 提供）。"""
 
 import os
 
 import pytest
+from dotenv import dotenv_values
+
+# .env.test / .env.test.local 仅补缺，不覆盖已有 OS 环境变量（CI 注入优先）
+for _f in (".env.test.local", ".env.test"):
+    if os.path.exists(_f):
+        for _k, _v in dotenv_values(_f).items():
+            if _v is not None:
+                os.environ.setdefault(_k, _v)
 
 TEST_DB_URL = os.environ.get("FJ_TEST_DATABASE_URL")
 
