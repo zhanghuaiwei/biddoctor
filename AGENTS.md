@@ -29,7 +29,7 @@ BidDoctor（代号 feijian）：标书废标风险 AI 自查。FastAPI + SQLAlch
 | 安全 | JWT 验签白名单算法；取 sub 分桶必须验签；敏感凭据比较用 `hmac.compare_digest`（验证码/`internal_token`）；INET 等强类型列写入前格式校验；错误码注册表见 `app/core/errors.py` docstring |
 | 迁移 | DDL 唯一来源 `app/models/`；改模型 → `alembic revision --autogenerate`；迁移只加不删 |
 | 限流 | 复用 `app/core/ratelimit.py::SlidingWindowLimiter`；新端点默认受全局限流保护 |
-| 依赖 | requirements 精确版本 pin（`==`），升级 = 改版本 → test-int 绿 → CI 绿 → 合并；前端 UI 库按需引入（unplugin），禁全量 import |
+| 依赖 | requirements 精确版本 pin（`==`），升级 = 改版本 → test-int 绿 → CI 绿 → 合并；前端 UI 库按需引入（unplugin），禁全量 import；**前端一律 pnpm**（版本锁 packageManager 字段，.npmrc node-linker=hoisted），lockfile=pnpm-lock.yaml，禁混用 npm |
 
 ## 功能全生命周期留痕（新增功能 checklist）
 
