@@ -41,7 +41,7 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 4. **编码**：小步实现，遵守 §代码范式；分层 `api/` 薄 → `services/` 事务边界 → `engine/` 纯函数。
 5. **测试**：行为变更必须有针对性自动化测试并实际运行（见 §测试与验证），不得以"仅编译通过/人工确认"代替。
 6. **留痕自检**：新审计 action 已注册并覆盖创建/状态迁移/删除/核销各点；异步走 `tasks` 状态机；集成测试断言留痕存在。
-7. **交付**：按 §交付说明 输出。
+7. **交付**：按 §交付说明 输出，并按 §AI 工作留存 落记录。
 
 ## 硬性禁区
 
@@ -90,12 +90,16 @@ make test-int    # 全量（需 FJ_TEST_DATABASE_URL，见 tests/conftest.py）
 
 新增端点三件套：smoke 路由断言（`tests/test_smoke.py`）+ 集成正常路径 + 越权 404/错误码路径。
 带内存状态（限流/节流单例）的测试必须用 autouse fixture 清理状态。
-前端：`pnpm lint` + `pnpm build`（在 `smart-bid-doctor-web/`）。
+前端：`pnpm build`（vue-tsc 类型检查 + vite 构建，在 `smart-bid-doctor-web/`；package.json 暂无 lint 脚本）。
 
 ## 交付说明
 
 最终说明只列以下六项，不写过程流水账：
 **任务级别** / **实际改动**（文件级）/ **验证结果**（命令与结果）/ **未验证项** / **影响面**（API 契约、迁移、前端契约、部署）/ **风险与需人工复核项**。
+
+## AI 工作留存
+
+每一次实质 AI 产出（修改任务、问答、分析、评估、设计讨论）收尾时留存到 `docs/records/`，随库提交推送；规范与模板见 `docs/records/README.md`、`docs/records/_TEMPLATE.md`。一文一记，命名 `YYYY-MM-DD-主题.md`，固定三节：**内容留存**（AI 返回的实质内容与本次实际改动）、**SQL 留存**（对任何环境执行过的 DB 操作原文，较长另存同名 `.sql`；alembic 迁移只记 revision id 与用途）、**测试留存**（验证项/命令/退出码/结果摘要/证据位置），无对应内容的节写「无」。设计类文档与预测分析前置资料（`*.docx`/`*.pptx` 等二进制）不入库，沿用 `.gitignore` 全局排除。本节是 L0「不改仓库」的唯一例外：留存只新增 `docs/records/` 文件，不触碰业务内容；未提交的记录可随下一次任务一并提交。
 
 ## 停止或升级
 
@@ -118,6 +122,7 @@ make test-int    # 全量（需 FJ_TEST_DATABASE_URL，见 tests/conftest.py）
 | 前端改动 | `src/api/`（client 契约）、`src/constants/`、`src/composables/` |
 | 测试环境 | `tests/conftest.py`（FJ_TEST_DATABASE_URL） |
 | 留痕参照 | `tests/test_auth_security.py` |
+| AI 工作留存 | `docs/records/README.md`（规范）、`docs/records/`（历史记录，追溯既往 AI 产出先查这里） |
 | 部署 | `docker-compose.prod.yml`、`deploy/` |
 
 ## 变更反哺
