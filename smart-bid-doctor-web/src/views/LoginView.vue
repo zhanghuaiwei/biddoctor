@@ -1,5 +1,5 @@
 <!-- 登录页（02 §9.1）：邮箱验证码登录。
-     流程：发码（60s 倒计时，useCountdown 卸载清理）→ 输码登录 → useAuth 写入 token →
+     流程：发码（60s 倒计时，useCountdown 卸载清理）→ 输码登录 → auth store 写入 token →
      按登录前 URL 回跳（client.ts 401 时携带的 redirect）。dev 环境固定码 123456 由后端返回。 -->
 <template>
   <div class="login-card">
@@ -30,12 +30,12 @@ import type { FormInstance, FormRules } from 'element-plus'
 
 import { login as loginApi, requestEmailCode } from '@/api/auth'
 import { notifyApiError } from '@/api/client'
-import { useAuth } from '@/composables/useAuth'
 import { useCountdown } from '@/composables/useCountdown'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
-const { login: onLoginSuccess } = useAuth()
+const auth = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const form = reactive({ email: '', code: '' })
@@ -64,7 +64,7 @@ async function login() {
   loading.value = true
   try {
     const res = await loginApi(form.email, form.code)
-    onLoginSuccess(res.token, res.user.email)
+    auth.login(res.token, res.user.email)
     // 支持登录后回跳来源页（api/client 401 时携带 redirect）
     router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/projects')
   } catch (e) {

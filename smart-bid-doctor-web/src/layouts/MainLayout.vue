@@ -42,17 +42,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 
-import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores/auth'
 import QuotaBadge from '@/components/QuotaBadge.vue'
 
 const router = useRouter()
-const { email, logout: doLogout } = useAuth()
+// storeToRefs 解构保持响应性（email 展示随登录态实时更新）
+const { email } = storeToRefs(useAuthStore())
 const menuOpen = ref(false)
 const quotaBadge = ref<InstanceType<typeof QuotaBadge>>()
 
 function logout() {
-  doLogout()
+  useAuthStore().logout()
   router.push('/login')
 }
 </script>

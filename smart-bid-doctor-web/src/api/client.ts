@@ -2,7 +2,7 @@
  * 请求层唯一入口：统一鉴权注入、超时、统一错误体解析（{"error":{code,message}}）、
  * 401 回跳（携带 redirect）。资源函数一律经此发起请求，禁止组件内裸 fetch。
  */
-import { STORAGE_KEYS } from '@/constants/storage'
+import { useAuthStore } from '@/stores/auth'
 
 export class ApiError extends Error {
   constructor(
@@ -22,16 +22,17 @@ interface ApiOptions extends RequestInit {
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
-/** 会话过期统一处理：清 token → 回登录页带 redirect → 返回 ApiError（调用方自行 throw / reject） */
+/** 会话过期统一处理：清登录态（auth store，含 localStorage 持久层）→ 回登录页带 redirect → 返回 ApiError（调用方自行 throw / reject） */
 function performUnauthorizedRedirect(): ApiError {
-  localStorage.removeItem(STORAGE_KEYS.token)
+  // 运行期调用（请求发出即 pinia 已激活），非模块顶层，useAuthStore() 安全
+  useAuthStore().logout()
   location.assign('/login?redirect=' + encodeURIComponent(location.pathname + location.search))
   return new ApiError(401, 'UNAUTHORIZED', '登录已过期，请重新登录')
 }
 
-/** Bearer 鉴权头（登录后才有） */
+/** Bearer 鉴权头（登录后才有；token 归口 auth store） */
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem(STORAGE_KEYS.token)
+  const token = useAuthStore().token
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { getToken } from './constants/storage'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -23,8 +23,9 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  // 仅判本地 token 存在性；有效性由 api/client 统一 401 兜底跳转
-  if (to.path !== '/login' && !getToken()) {
+  // 仅判本地 token 存在性（登录态归口 auth store）；有效性由 api/client 统一 401 兜底跳转
+  // 守卫运行于 pinia 激活后，函数体内 useAuthStore() 安全
+  if (to.path !== '/login' && !useAuthStore().token) {
     return { path: '/login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : {} }
   }
 })
