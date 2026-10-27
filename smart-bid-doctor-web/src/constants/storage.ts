@@ -3,6 +3,7 @@
 export const STORAGE_KEYS = {
   token: 'sbd_token',
   email: 'sbd_email',
+  theme: 'sbd_theme',
 } as const
 
 export const getToken = (): string | null => localStorage.getItem(STORAGE_KEYS.token)

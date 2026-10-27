@@ -1,5 +1,6 @@
-// smart-bid-doctor 全局设计变量（less）——响应式断点与基础样式令牌
+// smart-bid-doctor 全局设计令牌（less）
 // 引入方式：vite additionalData 自动注入每个 <style lang="less">，无需手动 @import
+// 约定：视图样式只消费此处令牌，禁止散落硬编码色值/阴影/时长；新增令牌先在此登记再使用。
 
 // ---- 响应式断点 ----
 @bp-sm: 640px;   // 手机
@@ -8,49 +9,85 @@
 @bp-xl: 1200px;  // 桌面
 
 // ---- 品牌色 ----
-@c-primary: #1e3250;    // 主色（导航/标题）
-@c-accent: #be3b2e;     // 强调（CTA）
-@c-text: #232b36;       // 正文
-@c-text-sub: #66707c;   // 次要文字
-@c-bg: #f5f7fa;         // 页面背景
-@c-line: #dcdfe6;       // 分隔线
+// 运行期可配置色一律引用 CSS 变量（--app-*）：默认值定义在 global.less，
+// theme store（主题配置抽屉）实时改写，亮/暗与强调色切换无需重编译。
+@c-primary: #1e3250;            // 主色（导航/标题，静态）
+@c-accent: var(--app-accent);   // 强调色（可配置）
+@c-accent-soft: var(--app-accent-soft); // 强调色浅底（随亮/暗模式自动适配）
+
+// ---- 中性色（表面与文字层级，随亮/暗模式切换） ----
+@c-bg: var(--app-bg);
+@c-surface: var(--app-surface);
+@c-surface-alt: var(--app-surface-alt);
+@c-text: var(--app-text);
+@c-text-sub: var(--app-text-sub);
+@c-text-muted: var(--app-text-muted);
+@c-line: var(--app-line);
+@c-line-soft: var(--app-line-soft);
+
+// ---- 语义色 ----
+@c-success: #0f9d70;
+@c-warning: #c9861a;
+@c-info: #4a7bc8;
 
 // ---- 布局 ----
-@page-max: 1080px;      // 内容最大宽度
-@page-pad: 16px;        // 移动端页边距
-@radius: 8px;
-@radius-lg: 14px;       // 大卡片/品牌面板
+@page-max: 1180px;        // 内容最大宽度
+@page-pad: 16px;          // 移动端页边距
+@sidebar-w: 236px;        // 侧栏宽度
+@header-h: 64px;          // 顶栏高度
 
-// ---- 品牌展示（登录页等品牌区渐变与光晕，均由此取色） ----
-@c-brand-grad: linear-gradient(160deg, #1e3250 0%, #16233b 55%, #101a2c 100%);
-@c-brand-glow-accent: fade(#be3b2e, 38%);   // 品牌区强调色光晕
-@c-brand-glow-cool: fade(#4a7bc8, 26%);     // 品牌区冷色光晕
-@c-brand-text: #e8eef6;                     // 深色底上的主文字
-@c-brand-text-sub: rgba(201, 212, 228, 0.72); // 深色底上的次要文字
+// ---- 圆角 ----
+@radius-xs: 4px;
+@radius-sm: 6px;
+@radius: 10px;
+@radius-lg: 16px;
+@radius-pill: 999px;
 
-// ---- 强调色阶（Element Plus 主色映射用，light-N = 混白 N*10%） ----
-@c-accent-light-3: mix(#ffffff, @c-accent, 30%);
-@c-accent-light-5: mix(#ffffff, @c-accent, 50%);
-@c-accent-light-7: mix(#ffffff, @c-accent, 70%);
-@c-accent-light-8: mix(#ffffff, @c-accent, 80%);
-@c-accent-light-9: mix(#ffffff, @c-accent, 90%);
-@c-accent-dark-2: mix(#000000, @c-accent, 20%);
+// ---- 字阶 ----
+@fs-display: 34px;
+@fs-h1: 26px;
+@fs-h2: 18px;
+@fs-h3: 15px;
+@fs-body: 14px;
+@fs-sm: 13px;
+@fs-xs: 12px;
+
+// ---- 品牌展示（登录页品牌区渐变与光晕，均由此取色） ----
+@c-brand-grad: linear-gradient(155deg, #22395c 0%, #16233b 52%, #0e1727 100%);
+@c-brand-glow-accent: fade(#e85443, 60%);    // 品牌区强调色光晕
+@c-brand-glow-cool: fade(#5d8fe0, 42%);      // 品牌区冷色光晕
+@c-brand-text: #eef3f9;                       // 深色底上的主文字
+@c-brand-text-sub: rgba(201, 212, 228, 0.74); // 深色底上的次要文字
+@c-brand-line: rgba(255, 255, 255, 0.08);     // 深色底上的分隔线
+
+// ---- 强调色阶（Element Plus 主色映射用；由 theme store 按基色实时计算写回） ----
+@c-accent-light-3: var(--app-accent-light-3);
+@c-accent-light-5: var(--app-accent-light-5);
+@c-accent-light-7: var(--app-accent-light-7);
+@c-accent-light-8: var(--app-accent-light-8);
+@c-accent-light-9: var(--app-accent-light-9);
+@c-accent-dark-2: var(--app-accent-dark-2);
 
 // ---- 导航（侧边栏/抽屉菜单） ----
-@c-nav-bg: #16233b;        // 侧栏底色
-@c-nav-text: #c9d4e4;      // 菜单文字
-@c-nav-active-bg: rgba(255, 255, 255, 0.12); // 选中项底色
-@c-nav-hover-bg: rgba(255, 255, 255, 0.06);  // 悬停底色
+@c-nav-bg: #16233b;                          // 侧栏底色
+@c-nav-text: #a9b7cb;                        // 菜单文字
+@c-nav-active-bg: rgba(255, 255, 255, 0.1);  // 选中项底色
+@c-nav-hover-bg: rgba(255, 255, 255, 0.055); // 悬停底色
+@c-nav-line: rgba(255, 255, 255, 0.07);      // 侧栏分隔线
 
 // ---- 阴影（由浅到深，卡片/弹层统一取用，禁散落硬编码） ----
-@shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-@shadow-md: 0 4px 12px rgba(16, 24, 40, 0.1);
-@shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
-@shadow-accent: 0 6px 16px fade(@c-accent, 32%); // CTA 悬停强调光晕
+@shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+@shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+@shadow-md: 0 6px 16px rgba(15, 23, 42, 0.08);
+@shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.12);
+@shadow-accent: 0 8px 18px color-mix(in srgb, var(--app-accent) 32%, transparent); // CTA 悬停强调光晕
+@shadow-accent-sm: 0 5px 14px color-mix(in srgb, var(--app-accent) 40%, transparent); // 品牌徽标投影
+@shadow-accent-lg: 0 12px 28px color-mix(in srgb, var(--app-accent) 30%, transparent); // 强调色数据卡投影
+@shadow-accent-xl: 0 16px 34px color-mix(in srgb, var(--app-accent) 36%, transparent); // 强调色数据卡悬停投影
 
 // ---- 动效（页面过渡与交互动画统一取用） ----
 @ease-out: cubic-bezier(0.22, 0.61, 0.36, 1); // 先快后慢，丝滑收场
 @dur-fast: 0.15s;   // 悬停/按下等即时反馈
 @dur-base: 0.25s;   // 卡片、菜单、路由切换
-@dur-slow: 0.4s;    // 进场强调
-@dur-ambient: 9s;   // 氛围装饰慢速漂移
+@dur-slow: 0.45s;   // 进场强调
+@dur-ambient: 14s;  // 氛围装饰慢速漂移

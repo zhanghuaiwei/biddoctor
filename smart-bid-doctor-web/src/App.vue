@@ -5,4 +5,10 @@
       <component :is="Component" />
     </transition>
   </router-view>
+  <!-- 主题配置抽屉：全局唯一实例，顶栏/登录页仅负责唤出（状态归口 theme store） -->
+  <ThemeDrawer />
 </template>
+
+<script setup lang="ts">
+import ThemeDrawer from '@/components/ThemeDrawer.vue'
+</script>

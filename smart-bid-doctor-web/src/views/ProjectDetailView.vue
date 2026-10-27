@@ -3,38 +3,110 @@
      终态自动停）→ 对照发起（需双文件就绪，402 引导买次数包）→ 对照结果/清单查看（M1 引擎
      接入前清单生成/导出为 501，前端按 NOT_IMPLEMENTED 错误码提示）。 -->
 <template>
-  <div class="page" v-if="project">
-    <el-card class="block lift-card">
-      <div class="head">
-        <div>
-          <b class="proj-name">{{ project.name }}</b>
-          <el-tag size="small" class="proj-status" :type="PROJECT_STATUS_TAGS[project.status]">
-            {{ PROJECT_STATUS_LABELS[project.status] }}
+  <div v-if="project" class="page">
+    <header class="page-head detail-head">
+      <div class="detail-title-wrap">
+        <button type="button" class="back-link" @click="$router.push('/projects')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          返回项目列表
+        </button>
+        <div class="title-row">
+          <h1 class="page-title">{{ project.name }}</h1>
+          <el-tag size="small" :type="PROJECT_STATUS_TAGS[project.status]">
+            <span class="tag-dot" />{{ PROJECT_STATUS_LABELS[project.status] }}
           </el-tag>
         </div>
-        <el-button @click="$router.push('/projects')">返回列表</el-button>
+        <p class="page-desc num">项目编号 #{{ project.id }} · 最后更新 {{ formatDateTime(project.updated_at) }}</p>
       </div>
-    </el-card>
+    </header>
 
-    <el-card class="block lift-card" :header="`文件上传（PDF，≤${MAX_UPLOAD_MB}MB / ≤${MAX_PAGES}页）`">
+    <!-- 流程引导：静态三步说明（不引入额外状态判断，避免误导当前进度） -->
+    <div class="step-bar cascade-in">
+      <div class="step">
+        <span class="step-index num">01</span>
+        <div>
+          <strong>上传双文件</strong>
+          <p>招标文件 + 投标文件（PDF）</p>
+        </div>
+      </div>
+      <span class="step-line" aria-hidden="true" />
+      <div class="step">
+        <span class="step-index num">02</span>
+        <div>
+          <strong>等待解析</strong>
+          <p>自动抽取页数、条款与风险点</p>
+        </div>
+      </div>
+      <span class="step-line" aria-hidden="true" />
+      <div class="step">
+        <span class="step-index num">03</span>
+        <div>
+          <strong>发起对照</strong>
+          <p>逐条比对并生成废标结论</p>
+        </div>
+      </div>
+    </div>
+
+    <el-card class="block lift-card">
+      <template #header>
+        <div class="panel-head">
+          <div class="panel-head-main">
+            <span class="panel-title">文件上传</span>
+            <span class="panel-count">2 个槽位</span>
+          </div>
+          <span class="panel-hint">PDF · ≤{{ MAX_UPLOAD_MB }}MB · ≤{{ MAX_PAGES }} 页</span>
+        </div>
+      </template>
       <div class="upload-row">
         <UploadSlot :project-id="pid" role="tender" title="招标文件（tender）" @uploaded="onUploaded" />
         <UploadSlot :project-id="pid" role="bid" title="投标文件（bid）" @uploaded="onUploaded" />
       </div>
+      <div class="actions">
+        <el-button type="primary" @click="genChecklist">生成废标条款清单</el-button>
+        <el-button type="danger" plain @click="startCompare">发起双文件对照（消耗 1 次）</el-button>
+        <el-button @click="refreshDocs">刷新状态</el-button>
+      </div>
     </el-card>
 
-    <el-card class="block lift-card" header="已上传文件">
-      <el-table :data="docs">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column label="类型" width="100">
-          <template #default="{ row }">{{ DOCUMENT_ROLE_LABELS[row.role as DocumentRole] }}</template>
+    <el-card class="block lift-card">
+      <template #header>
+        <div class="panel-head">
+          <div class="panel-head-main">
+            <span class="panel-title">已上传文件</span>
+            <span class="panel-count num">{{ docs.length }}</span>
+          </div>
+        </div>
+      </template>
+
+      <el-table v-if="docs.length" :data="docs">
+        <el-table-column label="编号" width="88">
+          <template #default="{ row }">
+            <span class="cell-id num">#{{ row.id }}</span>
+          </template>
         </el-table-column>
-        <el-table-column prop="orig_name" label="文件名" min-width="140" />
-        <el-table-column prop="total_pages" label="页数" width="80" />
-        <el-table-column label="解析状态" width="120">
+        <el-table-column label="类型" width="120">
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain" :type="DOCUMENT_ROLE_TAGS[row.role as DocumentRole]">
+              {{ DOCUMENT_ROLE_LABELS[row.role as DocumentRole] }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="orig_name" label="文件名" min-width="180">
+          <template #default="{ row }">
+            <span class="cell-file">{{ row.orig_name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="页数" width="90">
+          <template #default="{ row }">
+            <span class="num cell-muted">{{ row.total_pages ?? '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="解析状态" width="130">
           <template #default="{ row }">
             <el-tag size="small" :type="PARSE_STATUS_TAGS[row.parse_status as ParseStatus] ?? 'info'">
-              {{ PARSE_STATUS_LABELS[row.parse_status as ParseStatus] ?? row.parse_status }}
+              <span class="tag-dot" />{{ PARSE_STATUS_LABELS[row.parse_status as ParseStatus] ?? row.parse_status }}
             </el-tag>
           </template>
         </el-table-column>
@@ -44,49 +116,81 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-empty v-else description="尚未上传文件，先上传招标文件即可开始解析" :image-size="72" />
+
       <div v-if="activeTask" class="task-progress">
-        <span class="warn-text">解析任务 #{{ activeTask.id }}：{{ TASK_STATUS_LABELS[activeTask.status] }}</span>
-        <el-progress :percentage="activeTask.progress" :stroke-width="8" class="task-bar" />
-      </div>
-      <div class="actions">
-        <el-button type="primary" @click="genChecklist">生成废标条款清单</el-button>
-        <el-button type="danger" plain @click="startCompare">发起双文件对照（消耗 1 次）</el-button>
-        <el-button @click="refreshDocs">刷新状态</el-button>
+        <div class="task-meta">
+          <span class="task-title num">解析任务 #{{ activeTask.id }}</span>
+          <span class="task-status">{{ TASK_STATUS_LABELS[activeTask.status] }}</span>
+        </div>
+        <el-progress :percentage="activeTask.progress" :stroke-width="8" />
       </div>
     </el-card>
 
-    <el-card class="lift-card" header="废标条款清单">
+    <el-card class="lift-card">
       <template #header>
-        <div class="checklist-head">
-          <span>废标条款清单</span>
-          <el-select v-model="categoryFilter" clearable placeholder="全部分类" size="small" class="cat-filter">
-            <el-option
-              v-for="c in CHECK_CATEGORIES"
-              :key="c"
-              :label="`${CHECK_CATEGORY_LABELS[c]}（${stats[c] ?? 0}）`"
-              :value="c"
-            />
-          </el-select>
+        <div class="panel-head">
+          <div class="panel-head-main">
+            <span class="panel-title">废标条款清单</span>
+            <span class="panel-count num">{{ filteredItems.length }}</span>
+          </div>
+          <span class="panel-hint">按分类筛选</span>
         </div>
       </template>
-      <el-table :data="filteredItems">
-        <el-table-column prop="code" label="编号" width="110" />
-        <el-table-column label="类别" width="130">
-          <template #default="{ row }">{{ CHECK_CATEGORY_LABELS[row.category as CheckCategory] }}</template>
+
+      <div class="chips" role="group" aria-label="条款分类筛选">
+        <button
+          type="button"
+          class="chip"
+          :class="{ 'is-active': !categoryFilter }"
+          @click="categoryFilter = ''"
+        >
+          全部<span class="chip-num num">{{ checkItems.length }}</span>
+        </button>
+        <button
+          v-for="c in CHECK_CATEGORIES"
+          :key="c"
+          type="button"
+          class="chip"
+          :class="{ 'is-active': categoryFilter === c }"
+          @click="categoryFilter = c"
+        >
+          {{ CHECK_CATEGORY_LABELS[c] }}<span class="chip-num num">{{ stats[c] ?? 0 }}</span>
+        </button>
+      </div>
+
+      <el-table v-if="filteredItems.length" :data="filteredItems">
+        <el-table-column label="编号" width="120">
+          <template #default="{ row }">
+            <span class="num cell-mono">{{ row.code }}</span>
+          </template>
         </el-table-column>
-        <el-table-column prop="requirement" label="要求" min-width="220" />
-        <el-table-column label="页码" width="80">
-          <template #default="{ row }">第 {{ row.ref_page }} 页</template>
+        <el-table-column label="类别" width="140">
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain">{{ CHECK_CATEGORY_LABELS[row.category as CheckCategory] }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="requirement" label="要求" min-width="240">
+          <template #default="{ row }">
+            <span class="cell-strong">{{ row.requirement }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="页码" width="100">
+          <template #default="{ row }">
+            <span class="num cell-muted">第 {{ row.ref_page }} 页</span>
+          </template>
         </el-table-column>
       </el-table>
+
       <el-empty
-        v-if="!checkItems.length"
+        v-else
         description="暂无清单数据（清单生成引擎 M1 接入，上传招标文件后自动生成）"
-        :image-size="60"
+        :image-size="72"
       />
     </el-card>
   </div>
-  <el-empty v-else-if="loadFailed" description="项目不存在或已被删除">
+
+  <el-empty v-else-if="loadFailed" description="项目不存在或已被删除" class="notfound-empty">
     <el-button type="primary" @click="$router.push('/projects')">返回项目列表</el-button>
   </el-empty>
 </template>
@@ -110,6 +214,7 @@ import {
   CHECK_CATEGORIES,
   CHECK_CATEGORY_LABELS,
   DOCUMENT_ROLE_LABELS,
+  DOCUMENT_ROLE_TAGS,
   MAX_PAGES,
   MAX_UPLOAD_MB,
   PARSE_BUSY_STATUSES,
@@ -122,6 +227,7 @@ import {
   type DocumentRole,
   type ParseStatus,
 } from '@/constants/enums'
+import { formatDateTime } from '@/utils/format'
 import type { CheckItemOut, DocumentItem, ProjectOut, TaskOut } from '@/types'
 
 const route = useRoute()
@@ -224,32 +330,110 @@ onMounted(init)
 </script>
 
 <style scoped lang="less">
-.block {
-  margin-bottom: 16px;
+.detail-title-wrap {
+  min-width: 0;
 }
 
-.head {
-  display: flex;
-  justify-content: space-between;
+.back-link {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: @fs-sm;
+  color: @c-text-muted;
+  cursor: pointer;
+  transition: color @dur-fast @ease-out;
 
-  @media (max-width: @bp-sm) {
-    flex-wrap: wrap;
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    color: @c-accent;
   }
 }
 
-.proj-name {
-  font-size: 16px;
+.title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.proj-status {
-  margin-left: 8px;
+// ---- 流程引导 ----
+.step-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border: 1px solid @c-line-soft;
+  border-radius: @radius-lg;
+  background: @c-surface;
+
+  @media (max-width: @bp-md) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+
+  strong {
+    display: block;
+    font-size: @fs-sm;
+    color: @c-text;
+  }
+
+  p {
+    margin: 2px 0 0;
+    font-size: @fs-xs;
+    color: @c-text-muted;
+  }
+}
+
+.step-index {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: @c-accent-soft;
+  color: @c-accent;
+  font-size: @fs-xs;
+  font-weight: 700;
+}
+
+.step-line {
+  flex: 0 0 32px;
+  height: 1px;
+  background: @c-line;
+
+  @media (max-width: @bp-md) {
+    display: none;
+  }
+}
+
+// ---- 面板 ----
+.block {
+  margin-bottom: 20px;
 }
 
 .upload-row {
   display: flex;
-  gap: 32px;
+  gap: 24px;
   flex-wrap: wrap;
 
   @media (max-width: @bp-md) {
@@ -258,40 +442,119 @@ onMounted(init)
 }
 
 .actions {
-  margin-top: 16px;
+  margin-top: 20px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
 
   @media (max-width: @bp-sm) {
     flex-wrap: wrap;
-
-    :deep(.el-button) {
-      margin-left: 0;
-    }
   }
 }
 
-.task-progress {
-  margin-top: 12px;
-  max-width: 420px;
+.cell-id {
+  color: @c-text-muted;
+  font-size: @fs-xs;
 }
 
-.task-bar {
-  margin-top: 4px;
+.cell-file {
+  color: @c-text;
+  font-size: @fs-sm;
+}
+
+.cell-muted {
+  color: @c-text-muted;
+  font-size: @fs-xs;
+}
+
+.cell-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: @fs-xs;
+  color: @c-text-sub;
+}
+
+.cell-strong {
+  color: @c-text;
+  font-size: @fs-sm;
 }
 
 .warn-text {
-  color: @c-text-sub;
-  font-size: 12px;
+  color: @c-text-muted;
+  font-size: @fs-xs;
 }
 
-.checklist-head {
+.task-progress {
+  margin-top: 18px;
+  padding: 12px 16px;
+  border-radius: @radius;
+  background: @c-surface-alt;
+  max-width: 480px;
+}
+
+.task-meta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
-.cat-filter {
-  width: 200px;
+.task-title {
+  font-size: @fs-xs;
+  color: @c-text-sub;
+}
+
+.task-status {
+  font-size: @fs-xs;
+  color: @c-accent;
+  font-weight: 600;
+}
+
+// ---- 分类筛选 chips ----
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid @c-line;
+  border-radius: @radius-pill;
+  background: @c-surface;
+  font: inherit;
+  font-size: @fs-xs;
+  color: @c-text-sub;
+  cursor: pointer;
+  transition:
+    color @dur-fast @ease-out,
+    border-color @dur-fast @ease-out,
+    background-color @dur-fast @ease-out;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--app-accent) 55%, var(--app-line));
+    color: @c-accent;
+  }
+
+  &.is-active {
+    border-color: @c-accent;
+    background: @c-accent-soft;
+    color: @c-accent;
+    font-weight: 600;
+  }
+}
+
+.chip-num {
+  padding: 0 5px;
+  border-radius: @radius-pill;
+  background: color-mix(in srgb, var(--app-text) 6%, transparent);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.notfound-empty {
+  padding-top: 12vh;
 }
 </style>

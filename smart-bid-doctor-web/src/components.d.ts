@@ -32,9 +32,11 @@ declare module 'vue' {
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
+    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     QuotaBadge: typeof import('./components/QuotaBadge.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ThemeDrawer: typeof import('./components/ThemeDrawer.vue')['default']
     UploadSlot: typeof import('./components/UploadSlot.vue')['default']
   }
   export interface GlobalDirectives {

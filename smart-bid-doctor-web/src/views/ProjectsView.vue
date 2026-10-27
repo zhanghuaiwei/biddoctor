@@ -2,39 +2,78 @@
      新建（免费配额 402 时提示）+ 软删（不释放当月名额）。入口经 api/projects.ts 资源模块。 -->
 <template>
   <div class="page">
-    <el-card class="lift-card">
-      <div class="head">
-        <span class="head-title">检查项目</span>
-        <el-button type="primary" @click="dialog = true">新建项目</el-button>
+    <header class="page-head">
+      <div>
+        <span class="page-eyebrow">Workspace</span>
+        <h1 class="page-title">项目检查</h1>
+        <p class="page-desc">上传招标与投标文件，AI 逐条比对废标风险，结论全程留痕可查。</p>
       </div>
-      <el-table :data="items" v-loading="loading">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="name" label="项目名称" min-width="160" />
-        <el-table-column label="行业" width="120">
+      <div class="page-actions">
+        <el-button type="primary" @click="dialog = true">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          新建项目
+        </el-button>
+      </div>
+    </header>
+
+    <el-card class="lift-card">
+      <template #header>
+        <div class="panel-head">
+          <div class="panel-head-main">
+            <span class="panel-title">全部项目</span>
+            <span class="panel-count num">{{ total }}</span>
+          </div>
+          <span class="panel-hint">按更新时间倒序</span>
+        </div>
+      </template>
+
+      <el-table v-if="loading || items.length" :data="items" v-loading="loading">
+        <el-table-column label="编号" width="88">
           <template #default="{ row }">
-            <el-tag size="small" :type="INDUSTRY_TAGS[row.industry as Industry] ?? 'info'">
+            <span class="cell-id num">#{{ row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="项目名称" min-width="200">
+          <template #default="{ row }">
+            <span class="cell-strong">{{ row.name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="行业" width="130">
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain" :type="INDUSTRY_TAGS[row.industry as Industry] ?? 'info'">
               {{ INDUSTRY_LABELS[row.industry as Industry] ?? row.industry }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="120">
+        <el-table-column label="状态" width="126">
           <template #default="{ row }">
             <el-tag size="small" :type="PROJECT_STATUS_TAGS[row.status as ProjectStatus] ?? 'info'">
-              {{ PROJECT_STATUS_LABELS[row.status as ProjectStatus] ?? row.status }}
+              <span class="tag-dot" />{{ PROJECT_STATUS_LABELS[row.status as ProjectStatus] ?? row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="更新时间" width="170">
-          <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="更新时间" width="160">
           <template #default="{ row }">
-            <el-button size="small" @click="$router.push(`/projects/${row.id}`)">进入</el-button>
-            <el-button size="small" type="danger" plain @click="remove(row as ProjectOut)">删除</el-button>
+            <span class="cell-muted num">{{ formatDateTime(row.updated_at) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" link @click="$router.push(`/projects/${row.id}`)">
+              进入
+            </el-button>
+            <el-button size="small" type="danger" link @click="remove(row as ProjectOut)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
-      <div class="pager">
+
+      <el-empty v-else description="还没有检查项目，创建后可上传文件开始自查">
+        <el-button type="primary" @click="dialog = true">创建第一个项目</el-button>
+      </el-empty>
+
+      <div v-if="total > pageSize" class="pager">
         <el-pagination
           layout="total, prev, pager, next"
           :total="total"
@@ -45,8 +84,8 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialog" title="新建项目" width="min(420px, 92vw)">
-      <el-form label-position="top">
+    <el-dialog v-model="dialog" title="新建检查项目" width="min(440px, 92vw)">
+      <el-form label-position="top" class="create-form">
         <el-form-item label="项目名称">
           <el-input v-model="form.name" placeholder="如：xx医院设备采购-2026-10" @keyup.enter="create" />
         </el-form-item>
@@ -153,25 +192,35 @@ onMounted(load)
 </script>
 
 <style scoped lang="less">
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-
-  @media (max-width: @bp-sm) {
-    flex-wrap: wrap;
-  }
+.btn-icon {
+  width: 15px;
+  height: 15px;
+  margin-right: 4px;
 }
 
-.head-title {
-  font-weight: 700;
+.cell-id {
+  color: @c-text-muted;
+  font-size: @fs-xs;
+  letter-spacing: 0.02em;
+}
+
+.cell-strong {
+  font-weight: 600;
+  color: @c-text;
+}
+
+.cell-muted {
+  color: @c-text-muted;
+  font-size: @fs-xs;
 }
 
 .pager {
-  margin-top: 16px;
+  margin-top: 18px;
   display: flex;
   justify-content: flex-end;
+}
+
+.create-form {
+  padding-top: 4px;
 }
 </style>

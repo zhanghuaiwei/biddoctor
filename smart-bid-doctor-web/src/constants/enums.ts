@@ -57,6 +57,11 @@ export const DOCUMENT_ROLE_LABELS: Record<DocumentRole, string> = {
   bid: '投标文件',
 }
 
+export const DOCUMENT_ROLE_TAGS: Record<DocumentRole, TagType> = {
+  tender: 'primary',
+  bid: 'info',
+}
+
 export const PARSE_STATUSES = ['pending', 'running', 'done', 'failed', 'need_review'] as const
 export type ParseStatus = (typeof PARSE_STATUSES)[number]
 

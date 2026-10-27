@@ -1,20 +1,25 @@
-<!-- 登录页（02 §9.1）：邮箱验证码登录。产品化分屏布局：左侧品牌区（Logo/Slogan/卖点/氛围光晕，
-     级联进场），右侧表单区（大号输入 + CTA 悬停动效）；窄屏（<@bp-lg）品牌区折叠为顶部横幅。
+<!-- 登录页（02 §9.1）：邮箱验证码登录。产品化分屏布局：左侧品牌区（Logo/Slogan/卖点/光晕/网格纹理，
+     级联进场），右侧表单卡片（大号输入 + CTA 悬停动效）；窄屏（<@bp-lg）品牌区折叠为顶部横幅。
      流程：发码（60s 倒计时，useCountdown 卸载清理）→ 输码登录 → auth store 写入 token →
      按登录前 URL 回跳（client.ts 401 时携带的 redirect）。dev 环境固定码 123456 由后端返回。 -->
 <template>
   <div class="auth-layout">
-    <!-- 品牌区：深色渐变底 + 双光晕漂浮装饰，内容级联进场（动画类见 global.less） -->
+    <!-- 品牌区：深色渐变底 + 网格纹理 + 双光晕漂浮装饰，内容级联进场（动画类见 global.less） -->
     <aside class="brand-panel">
       <div class="glow glow-accent" aria-hidden="true" />
       <div class="glow glow-cool" aria-hidden="true" />
       <div class="brand-inner cascade-in">
         <div class="brand-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3l7 3v5c0 4.4-3 8.1-7 10-4-1.9-7-5.6-7-10V6l7-3z" />
-            <path d="M9 12l2 2 4-4" />
-          </svg>
-          <span>标书废检</span>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l7 3v5c0 4.4-3 8.1-7 10-4-1.9-7-5.6-7-10V6l7-3z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </span>
+          <span class="brand-name">
+            <strong>标书废检</strong>
+            <small>BID RISK INSPECTOR</small>
+          </span>
         </div>
         <h1 class="brand-slogan">AI 自查废标风险，<br />让每一份标书安心交付</h1>
         <ul class="brand-points">
@@ -29,7 +34,7 @@
       </div>
     </aside>
 
-    <!-- 表单区：白底居中窄列，首屏上浮淡入 -->
+    <!-- 表单区：居中窄列卡片，首屏上浮淡入 -->
     <main class="auth-main">
       <div class="login-card">
         <h2 class="title">欢迎回来</h2>
@@ -64,7 +69,16 @@
             登录 / 注册
           </el-button>
         </el-form>
-        <p class="footer-note">© 2026 标书废检 · 标书废标风险 AI 自查</p>
+        <div class="login-foot">
+          <p class="footer-note">© 2026 标书废检 · 标书废标风险 AI 自查</p>
+          <el-button text size="small" class="theme-entry" @click="theme.openDrawer()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3.2" />
+              <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z" />
+            </svg>
+            外观设置
+          </el-button>
+        </div>
       </div>
     </main>
   </div>
@@ -79,10 +93,12 @@ import { login as loginApi, requestEmailCode } from '@/api/auth'
 import { notifyApiError } from '@/api/client'
 import { useCountdown } from '@/composables/useCountdown'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const theme = useThemeStore()
 
 const formRef = ref<FormInstance>()
 const form = reactive({ email: '', code: '' })
@@ -147,7 +163,7 @@ async function login() {
 .auth-layout {
   display: flex;
   min-height: 100vh;
-  background: #fff;
+  background: @c-bg;
 
   @media (max-width: @bp-lg) {
     flex-direction: column;
@@ -157,69 +173,112 @@ async function login() {
 // ---- 品牌区 ----
 .brand-panel {
   position: relative;
-  flex: 0 0 44%;
+  flex: 0 0 46%;
   display: flex;
   align-items: center;
-  padding: 64px 56px;
+  padding: 64px 60px;
   background: @c-brand-grad;
   color: @c-brand-text;
   overflow: hidden;
 
+  // 网格纹理：低对比度细线 + 右上角径向遮罩，避免脏底又增加质感
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(circle at 70% 20%, #000 0%, transparent 72%);
+    mask-image: radial-gradient(circle at 70% 20%, #000 0%, transparent 72%);
+    pointer-events: none;
+  }
+
   @media (max-width: @bp-lg) {
     flex: none;
     align-items: flex-start;
-    padding: 36px 24px 28px;
+    padding: 34px 24px 30px;
   }
 }
 
 .glow {
   position: absolute;
-  width: 320px;
-  height: 320px;
+  width: 380px;
+  height: 380px;
   border-radius: 50%;
-  filter: blur(64px);
+  filter: blur(52px);
   pointer-events: none;
   animation: float-drift @dur-ambient @ease-out infinite alternate;
 }
 
 .glow-accent {
-  top: -90px;
-  right: -70px;
+  top: -110px;
+  right: -90px;
   background: @c-brand-glow-accent;
 }
 
 .glow-cool {
-  bottom: -110px;
-  left: -80px;
+  bottom: -130px;
+  left: -90px;
   background: @c-brand-glow-cool;
   animation-delay: @dur-ambient / 2;
 }
 
 .brand-inner {
   position: relative;
-  max-width: 440px;
+  z-index: 1;
+  max-width: 460px;
 }
 
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  gap: 12px;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: @radius;
+  background: linear-gradient(150deg, var(--app-accent-light), var(--app-accent-dark));
+  box-shadow: @shadow-accent-sm;
+  color: #fff;
 
   svg {
-    width: 32px;
-    height: 32px;
-    color: @c-accent-light-5;
+    width: 21px;
+    height: 21px;
+  }
+}
+
+.brand-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+
+  strong {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  small {
+    margin-top: 2px;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    color: @c-brand-text-sub;
   }
 }
 
 .brand-slogan {
-  margin: 28px 0 36px;
-  font-size: 30px;
-  line-height: 1.4;
+  margin: 34px 0 30px;
+  font-size: 32px;
+  line-height: 1.38;
   font-weight: 700;
+  letter-spacing: -0.01em;
 
   @media (max-width: @bp-lg) {
     margin: 16px 0 0;
@@ -243,17 +302,17 @@ async function login() {
     padding: 14px 0;
 
     & + li {
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-top: 1px solid @c-brand-line;
     }
   }
 
   strong {
-    font-size: 15px;
+    font-size: @fs-h3 - 1px;
   }
 
   p {
     margin: 4px 0 0;
-    font-size: 13px;
+    font-size: @fs-sm;
     line-height: 1.6;
     color: @c-brand-text-sub;
   }
@@ -266,13 +325,14 @@ async function login() {
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: @radius;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: @radius-sm;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid @c-brand-line;
   color: @c-accent-light-5;
 
   :deep(svg) {
-    width: 20px;
-    height: 20px;
+    width: 19px;
+    height: 19px;
   }
 }
 
@@ -282,36 +342,57 @@ async function login() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
+  padding: 48px 32px;
+  background:
+    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--app-accent) 7%, transparent) 0%, transparent 42%),
+    @c-bg;
 
   @media (max-width: @bp-lg) {
     align-items: flex-start;
-    padding-top: 40px;
+    padding: 24px 16px 48px;
   }
 }
 
 .login-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  padding: 44px 40px 36px;
+  border: 1px solid @c-line-soft;
+  border-radius: @radius-lg;
+  background: @c-surface;
+  box-shadow: @shadow-md;
   // 首屏进场：上浮淡入（配合路由 page 过渡，双层节奏更丝滑）
   animation: rise-in @dur-slow @ease-out both;
+
+  @media (max-width: @bp-sm) {
+    padding: 28px 22px 24px;
+    box-shadow: @shadow-sm;
+  }
 }
 
 .title {
   margin: 0;
-  font-size: 26px;
+  font-size: @fs-h1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
-  margin: 8px 0 28px;
-  font-size: 14px;
+  margin: 8px 0 26px;
+  font-size: @fs-sm;
+  line-height: 1.6;
   color: @c-text-sub;
 }
 
 .input-icon {
   width: 16px;
   height: 16px;
-  color: @c-text-sub;
+  color: @c-text-muted;
+}
+
+// 表单控件间距统一
+:deep(.el-form-item) {
+  margin-bottom: 18px;
 }
 
 .code-row {
@@ -322,32 +403,45 @@ async function login() {
 
 .code-btn {
   // 固定最小宽度：倒计时文案切换时按钮不抖动
-  min-width: 128px;
+  min-width: 124px;
 }
 
 .submit {
   width: 100%;
-  margin-top: 8px;
+  height: 46px;
+  margin-top: 6px;
+  border-radius: @radius-pill;
   font-weight: 600;
-  letter-spacing: 2px;
-  transition:
-    transform @dur-fast @ease-out,
-    box-shadow @dur-fast @ease-out;
+  letter-spacing: 0.12em;
+}
 
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: @shadow-accent;
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
+.login-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 24px;
 }
 
 .footer-note {
-  margin: 32px 0 0;
-  font-size: 12px;
+  margin: 0;
+  font-size: @fs-xs;
   text-align: center;
-  color: @c-text-sub;
+  color: @c-text-muted;
+}
+
+.theme-entry {
+  font-size: @fs-xs;
+  color: @c-text-muted;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+  }
+
+  &:hover {
+    color: var(--app-accent);
+  }
 }
 </style>

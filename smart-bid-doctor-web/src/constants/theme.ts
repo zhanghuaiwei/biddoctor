@@ -1,0 +1,31 @@
+/**
+ * 主题配置注册表——外观模式与强调色预设的唯一来源。
+ * 与 variables.less / global.less 的 --app-* 运行期变量配合：store 按此计算色阶并写回 root。
+ */
+
+// ---- 外观模式 ----
+export const THEME_MODES = ['light', 'dark', 'system'] as const
+export type ThemeMode = (typeof THEME_MODES)[number]
+
+export const THEME_MODE_LABELS: Record<ThemeMode, string> = {
+  light: '亮色',
+  dark: '暗色',
+  system: '跟随系统',
+}
+
+// ---- 强调色预设（主题色）----
+export interface AccentPreset {
+  key: string
+  label: string
+  color: string
+}
+
+export const ACCENT_PRESETS: readonly AccentPreset[] = [
+  { key: 'brick', label: '砖红', color: '#be3b2e' },
+  { key: 'indigo', label: '靛蓝', color: '#3b5bdb' },
+  { key: 'teal', label: '墨绿', color: '#0f7b6c' },
+  { key: 'amber', label: '琥珀', color: '#b07418' },
+  { key: 'violet', label: '紫罗兰', color: '#7048b6' },
+]
+
+export const DEFAULT_ACCENT = ACCENT_PRESETS[0].color

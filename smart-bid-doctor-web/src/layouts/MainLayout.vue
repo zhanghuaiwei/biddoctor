@@ -1,32 +1,132 @@
+<!-- 主布局：深色品牌侧栏 + 毛玻璃顶栏（面包屑/额度徽标/用户区）。
+     侧栏 <@bp-md 折叠为抽屉；顶栏左侧 hamburger 唤出。视觉令牌统一取 variables.less。 -->
 <template>
   <el-container class="layout">
-    <el-aside class="aside" width="200px">
-      <div class="brand">标书废检</div>
-      <!-- 菜单配色经 CSS 变量注入（见 .menu 样式），令牌归口 variables.less -->
-      <el-menu router :default-active="$route.path" class="menu">
-        <el-menu-item index="/projects">项目列表</el-menu-item>
-        <el-menu-item index="/quota">次数与订单</el-menu-item>
-      </el-menu>
+    <el-aside class="aside" width="236px">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l7 3v5c0 4.4-3 8.1-7 10-4-1.9-7-5.6-7-10V6l7-3z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong>标书废检</strong>
+          <small>BID RISK INSPECTOR</small>
+        </span>
+      </div>
+
+      <nav class="nav">
+        <p class="nav-label">工作台</p>
+        <el-menu router :default-active="$route.path" class="menu">
+          <el-menu-item index="/projects">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 5h16" />
+                <path d="M4 12h16" />
+                <path d="M4 19h10" />
+                <circle cx="18" cy="19" r="2" />
+              </svg>
+            </span>
+            <span>项目检查</span>
+          </el-menu-item>
+          <el-menu-item index="/quota">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="6" width="18" height="13" rx="2.5" />
+                <path d="M3 10h18" />
+                <path d="M7 15h4" />
+              </svg>
+            </span>
+            <span>次数与订单</span>
+          </el-menu-item>
+        </el-menu>
+      </nav>
+
+      <footer class="aside-footer">
+        <p class="aside-note">AI 自查 · 结论留痕 · 风险可溯</p>
+        <p class="aside-version">v0.1 · MVP</p>
+      </footer>
     </el-aside>
 
-    <el-drawer v-model="menuOpen" direction="ltr" size="220px" :with-header="false" class="mobile-menu">
-      <div class="brand brand-dark">标书废检</div>
-      <el-menu router :default-active="$route.path" @select="menuOpen = false">
-        <el-menu-item index="/projects">项目列表</el-menu-item>
-        <el-menu-item index="/quota">次数与订单</el-menu-item>
+    <el-drawer v-model="menuOpen" direction="ltr" size="236px" :with-header="false" class="mobile-menu">
+      <div class="brand brand-dark">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l7 3v5c0 4.4-3 8.1-7 10-4-1.9-7-5.6-7-10V6l7-3z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong>标书废检</strong>
+          <small>BID RISK INSPECTOR</small>
+        </span>
+      </div>
+      <el-menu router :default-active="$route.path" class="menu menu-drawer" @select="menuOpen = false">
+        <el-menu-item index="/projects">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5h16" />
+              <path d="M4 12h16" />
+              <path d="M4 19h10" />
+              <circle cx="18" cy="19" r="2" />
+            </svg>
+          </span>
+          <span>项目检查</span>
+        </el-menu-item>
+        <el-menu-item index="/quota">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="6" width="18" height="13" rx="2.5" />
+              <path d="M3 10h18" />
+              <path d="M7 15h4" />
+            </svg>
+          </span>
+          <span>次数与订单</span>
+        </el-menu-item>
       </el-menu>
     </el-drawer>
 
-    <el-container>
+    <el-container class="body">
       <el-header class="header">
         <el-button class="menu-toggle" text @click="menuOpen = true" aria-label="打开菜单">
-          菜单
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </el-button>
+
+        <div class="crumb" aria-label="当前位置">
+          <span class="crumb-root">工作台</span>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-current">{{ pageTitle }}</span>
+        </div>
+
         <span class="header-spacer" />
         <QuotaBadge ref="quotaBadge" />
-        <span class="user-email">{{ email }}</span>
-        <el-button size="small" @click="logout">退出登录</el-button>
+        <span class="header-divider" aria-hidden="true" />
+        <div class="user">
+          <span class="avatar" aria-hidden="true">{{ initial }}</span>
+          <span class="user-email">{{ email }}</span>
+        </div>
+        <el-tooltip content="外观设置" placement="bottom" :show-after="300">
+          <el-button class="icon-btn" text circle aria-label="外观设置" @click="theme.openDrawer()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3.2" />
+              <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z" />
+            </svg>
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="退出登录" placement="bottom" :show-after="300">
+          <el-button class="icon-btn" text circle aria-label="退出登录" @click="logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
+              <path d="M15 8l4 4-4 4" />
+              <path d="M19 12H9" />
+            </svg>
+          </el-button>
+        </el-tooltip>
       </el-header>
+
       <el-main class="main">
         <!-- 子路由切换过渡（key 强制按路径重建，项目详情换 ID 也触发进场） -->
         <router-view v-slot="{ Component }">
@@ -40,18 +140,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import QuotaBadge from '@/components/QuotaBadge.vue'
 
 const router = useRouter()
+const route = useRoute()
 // storeToRefs 解构保持响应性（email 展示随登录态实时更新）
 const { email } = storeToRefs(useAuthStore())
+const theme = useThemeStore()
 const menuOpen = ref(false)
 const quotaBadge = ref<InstanceType<typeof QuotaBadge>>()
+
+// 顶栏面包屑末级（详情页统一按前缀判定，避免路由参数散落判断）
+const PAGE_TITLES: Record<string, string> = {
+  '/projects': '项目检查',
+  '/quota': '次数与订单',
+}
+const pageTitle = computed(() =>
+  route.path.startsWith('/projects/') ? '项目详情' : (PAGE_TITLES[route.path] ?? '工作台'),
+)
+
+const initial = computed(() => (email.value ? email.value.slice(0, 1).toUpperCase() : 'U'))
 
 function logout() {
   useAuthStore().logout()
@@ -61,11 +175,16 @@ function logout() {
 
 <style scoped lang="less">
 .layout {
-  height: 100vh;
+  min-height: 100vh;
 }
 
+// ---- 侧栏 ----
 .aside {
-  background: @c-nav-bg;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  background: @c-brand-grad;
+  color: @c-brand-text;
 
   @media (max-width: @bp-md) {
     display: none;
@@ -73,27 +192,78 @@ function logout() {
 }
 
 .brand {
-  color: #fff;
-  font-weight: 700;
-  padding: 20px 16px;
-  font-size: 18px;
-  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 22px;
+  border-bottom: 1px solid @c-brand-line;
 }
 
-.brand-dark {
-  color: @c-primary;
+.brand-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: @radius;
+  background: linear-gradient(150deg, var(--app-accent-light), var(--app-accent-dark));
+  box-shadow: @shadow-accent-sm;
+  color: #fff;
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+
+  strong {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  small {
+    margin-top: 2px;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: @c-brand-text-sub;
+  }
+}
+
+.nav {
+  flex: 1;
+  padding-top: 18px;
+}
+
+.nav-label {
+  margin: 0 0 8px;
+  padding: 0 12px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: fade(#fff, 38%);
 }
 
 // 菜单配色经 Element Plus CSS 变量注入，色值统一取 variables.less 导航令牌
 .menu {
-  --el-menu-bg-color: @c-nav-bg;
+  --el-menu-bg-color: transparent;
   --el-menu-text-color: @c-nav-text;
   --el-menu-active-color: #fff;
   --el-menu-hover-bg-color: @c-nav-hover-bg;
   --el-menu-hover-text-color: #fff;
+  --el-menu-item-height: 42px;
   border: none;
 
   :deep(.el-menu-item) {
+    margin-bottom: 4px;
+    border-radius: @radius-sm;
+    font-size: @fs-sm;
     transition:
       background-color @dur-base @ease-out,
       color @dur-base @ease-out,
@@ -101,46 +271,175 @@ function logout() {
 
     &.is-active {
       background: @c-nav-active-bg;
+      font-weight: 600;
       // 选中项左侧强调条（inset 阴影模拟，不占布局宽度）
       box-shadow: inset 3px 0 0 @c-accent;
     }
   }
 }
 
+.nav-icon {
+  display: inline-flex;
+  margin-right: 10px;
+  opacity: 0.85;
+
+  svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+.aside-footer {
+  padding: 16px 12px 4px;
+  border-top: 1px solid @c-brand-line;
+}
+
+.aside-note {
+  margin: 0;
+  font-size: @fs-xs;
+  color: @c-brand-text-sub;
+}
+
+.aside-version {
+  margin: 4px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: fade(#fff, 32%);
+}
+
+// ---- 顶栏 ----
+.body {
+  min-width: 0;
+}
+
 .header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  background: #fff;
-  box-shadow: @shadow-sm;
+  height: @header-h;
+  padding: 0 24px;
+  gap: 10px;
+  background: var(--app-header-bg);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid @c-line-soft;
   // 顶栏压在滚动内容之上，滚动时阴影分界
   position: relative;
   z-index: 10;
+
+  @media (max-width: @bp-sm) {
+    padding: 0 14px;
+  }
 }
 
 .menu-toggle {
   display: none;
+  padding: 6px;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
 
   @media (max-width: @bp-md) {
     display: inline-flex;
   }
 }
 
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: @fs-sm;
+  min-width: 0;
+}
+
+.crumb-root {
+  color: @c-text-muted;
+}
+
+.crumb-sep {
+  color: @c-line;
+}
+
+.crumb-current {
+  font-weight: 600;
+  color: @c-text;
+}
+
 .header-spacer {
   flex: 1;
 }
 
-.user-email {
-  color: @c-text-sub;
-  font-size: 13px;
+.header-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: @c-line;
 
   @media (max-width: @bp-sm) {
     display: none;
   }
 }
 
+.user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: @c-accent-soft;
+  color: @c-accent;
+  font-size: @fs-sm;
+  font-weight: 700;
+}
+
+.user-email {
+  color: @c-text-sub;
+  font-size: @fs-sm;
+
+  @media (max-width: @bp-sm) {
+    display: none;
+  }
+}
+
+.icon-btn {
+  color: @c-text-muted;
+  padding: 6px;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    color: var(--app-accent);
+  }
+}
+
 .main {
   padding: 0;
+}
+
+// ---- 移动端抽屉（深色同侧栏） ----
+.brand-dark {
+  padding: 24px 12px 20px;
+  border-bottom: none;
+}
+
+.mobile-menu {
+  :deep(.el-drawer__body) {
+    padding: 0 14px;
+    background: @c-brand-grad;
+  }
+}
+
+.menu-drawer {
+  --el-menu-bg-color: transparent;
 }
 </style>
