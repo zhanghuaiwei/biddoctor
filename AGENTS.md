@@ -67,7 +67,7 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 | 迁移 | DDL 唯一来源 `app/models/`；改模型 → `alembic revision --autogenerate`；迁移只加不删 |
 | 限流 | 复用 `app/core/ratelimit.py::SlidingWindowLimiter`（分桶键与 `deps.client_ip` 同口径）；新端点默认受全局限流保护 |
 | 依赖 | requirements 精确版本 pin（`==`），升级 = 改版本 → test-int 绿 → CI 绿 → 合并；前端 UI 库按需引入（unplugin），禁全量 import；**前端一律 pnpm**（版本锁 packageManager 字段，.npmrc node-linker=hoisted），lockfile=pnpm-lock.yaml，禁混用 npm |
-| 前端结构 | 请求只走 `src/api/`（client 统一错误体解析/超时/401 回跳带 redirect + 资源模块显式泛型），组件禁裸 fetch；枚举/标签映射/SKU/localStorage 键归口 `src/constants/`；可复用逻辑进 `src/composables/`（定时器必须卸载清理：usePolling/useCountdown）；金额按后端 Decimal 契约以字符串展示；UI 状态映射禁内联三元硬编码；设计令牌（断点/色板/阴影/动效时长与缓动）归口 `src/styles/variables.less`，路由过渡与卡片动效用 `global.less` 的 `.page-*`/`.lift-card`/`rise-in`，禁视图内散落硬编码时长、阴影与导航色 |
+| 前端结构 | 请求只走 `src/api/`（client 统一错误体解析/超时/401 回跳带 redirect + 资源模块显式泛型），组件禁裸 fetch；枚举/标签映射/SKU/localStorage 键归口 `src/constants/`；可复用逻辑进 `src/composables/`（定时器必须卸载清理：usePolling/useCountdown）；金额按后端 Decimal 契约以字符串展示；UI 状态映射禁内联三元硬编码；设计令牌（断点/色板/阴影/动效时长与缓动）归口 `src/styles/variables.less`，路由过渡与卡片动效用 `global.less` 的 `.page-*`/`.lift-card`/`rise-in`，禁视图内散落硬编码时长、阴影与导航色；带进度的大文件上传走 `client.ts::uploadWithProgress`（XHR，fetch 上传进度仅 Chromium）、大文件下载走 `client.ts::downloadWithProgress`（fetch 流式），均归口唯一请求入口 |
 
 ## 功能全生命周期留痕（新增功能 checklist）
 

@@ -1,5 +1,5 @@
 /** 项目 / 文件 / 清单 / 对照 / 报告 / 任务资源（02 §9.2–9.4、§9.6） */
-import { api, withQuery } from './client'
+import { api, uploadWithProgress, withQuery } from './client'
 import type { DocumentRole } from '@/constants/enums'
 import type {
   CheckItemsPage,
@@ -30,15 +30,19 @@ export function deleteProject(id: number) {
   return api<void>(`/projects/${id}`, { method: 'DELETE' })
 }
 
-/** 上传超时放宽：100MB 文件在弱网下 30s 默认超时不够 */
-export function uploadDocument(projectId: number, role: DocumentRole, file: File) {
+/** 上传超时放宽：100MB 文件在弱网下 30s 默认超时不够；onProgress 回调上传百分比（0-100） */
+export function uploadDocument(
+  projectId: number,
+  role: DocumentRole,
+  file: File,
+  onProgress?: (percent: number) => void,
+) {
   const fd = new FormData()
   fd.append('file', file)
   fd.append('role', role)
-  return api<UploadOut>(`/projects/${projectId}/documents`, {
-    method: 'POST',
-    body: fd,
+  return uploadWithProgress<UploadOut>(`/projects/${projectId}/documents`, fd, {
     timeoutMs: 120_000,
+    onProgress,
   })
 }
 

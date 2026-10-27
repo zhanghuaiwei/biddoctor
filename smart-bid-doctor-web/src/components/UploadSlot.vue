@@ -22,6 +22,14 @@
         上传
       </el-button>
     </div>
+    <!-- 上传进度：XHR onprogress 百分比；完成后随 uploading 复位隐藏 -->
+    <el-progress
+      v-if="uploading"
+      class="slot-progress"
+      :percentage="percent"
+      :stroke-width="6"
+      :show-text="true"
+    />
   </div>
 </template>
 
@@ -44,6 +52,7 @@ const emit = defineEmits<{ uploaded: [] }>()
 const input = ref<HTMLInputElement>()
 const uploading = ref(false)
 const fileName = ref('')
+const percent = ref(0)
 
 function onPick() {
   fileName.value = input.value?.files?.[0]?.name ?? ''
@@ -57,8 +66,11 @@ async function onUpload() {
     return ElMessage.warning(`文件超过 ${MAX_UPLOAD_MB}MB 上限（当前 ${formatBytes(file.size)}）`)
   }
   uploading.value = true
+  percent.value = 0
   try {
-    const res = await uploadDocument(props.projectId, props.role, file)
+    const res = await uploadDocument(props.projectId, props.role, file, (p) => {
+      percent.value = p
+    })
     ElMessage.success(res.dup ? '与已上传文件内容一致（sha256 去重），已复用' : '上传成功，解析任务已创建')
     emit('uploaded')
   } catch (e) {
@@ -87,6 +99,10 @@ async function onUpload() {
   display: flex;
   gap: 8px;
   align-items: stretch;
+}
+
+.slot-progress {
+  margin-top: 8px;
 }
 
 // 点击选区：虚线框 + 悬停提亮，选中后显示文件名
