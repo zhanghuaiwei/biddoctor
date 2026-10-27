@@ -127,3 +127,184 @@ class RiskLevel(StrEnum):
     RED = "red"
     YELLOW = "yellow"
     GREEN = "green"
+
+
+# ============================================================================
+# 以下为平台化域枚举（05-平台化管理与运维设计 v2.0）：sys_* / 附件 / 法务 / AI 治理
+# ============================================================================
+
+
+class DataScope(StrEnum):
+    """角色数据权限范围（05 §2.1）：SaaS 仅用 all/self 两档，org 为私有化预留。"""
+
+    ALL = "all"
+    ORG = "org"
+    SELF = "self"
+
+
+class CommonStatus(StrEnum):
+    """平台域通用启停状态（sys_org/sys_role/sys_menu/sys_dict_data）。"""
+
+    ACTIVE = "active"
+    DISABLED = "disabled"
+
+
+class MenuType(StrEnum):
+    """sys_menu 节点类型（05 §2.3）：目录/页面/按钮权限点。"""
+
+    DIR = "dir"
+    MENU = "menu"
+    BUTTON = "button"
+
+
+class ConfigValueType(StrEnum):
+    """sys_config.value_type：值反序列化方式。"""
+
+    STR = "str"
+    INT = "int"
+    BOOL = "bool"
+    JSON = "json"
+
+
+class NoticeType(StrEnum):
+    """sys_notice.type。"""
+
+    NOTICE = "notice"
+    ANNOUNCEMENT = "announcement"
+
+
+class NoticeLevel(StrEnum):
+    """sys_notice.level 与 sys_alert_log.level 共用分级。"""
+
+    INFO = "info"
+    WARN = "warn"
+    CRITICAL = "critical"
+
+
+class NoticeStatus(StrEnum):
+    """sys_notice 状态机：draft → published（publish_at 生效）→ offline。"""
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    OFFLINE = "offline"
+
+
+class LoginResult(StrEnum):
+    """sys_login_log.result：登录尝试全量记录（与 audit_logs 分工）。"""
+
+    SUCCESS = "success"
+    FAIL = "fail"
+
+
+class AlertRuleKey(StrEnum):
+    """告警规则键（sys_config alert.* 键，05 §4）：触发时落 sys_alert_log.rule_key。"""
+
+    TASK_FAIL_RATE = "alert.task_fail_rate"
+    PENDING_BACKLOG = "alert.pending_backlog_min"
+    DISK_USAGE = "alert.disk_usage"
+    COST_PER_PROJECT = "alert.cost_per_project"
+    JOB_CONSECUTIVE_FAIL = "alert.job_consecutive_fail"
+    RECONCILE_DIFF = "alert.reconcile_diff"
+    LLM_CIRCUIT = "alert.llm_circuit"
+
+
+class AttachmentModule(StrEnum):
+    """attachments.module 白名单（05 §7）：documents（标书原件）保持独立不迁移。"""
+
+    ORDER_VOUCHER = "order_voucher"  # 订单支付凭证截图
+    APPEAL = "appeal"  # 申诉材料
+    IMPORT = "import"  # 批量导入
+    PROFILE = "profile"  # 资料补传
+
+
+class LegalDocType(StrEnum):
+    """legal_documents.doc_type：三类法务文档（05 §8）。"""
+
+    USER_AGREEMENT = "user_agreement"
+    PRIVACY_POLICY = "privacy_policy"
+    DISCLAIMER = "disclaimer"
+
+
+class LegalStatus(StrEnum):
+    """legal_documents 版本状态机：draft → effective → retired。"""
+
+    DRAFT = "draft"
+    EFFECTIVE = "effective"
+    RETIRED = "retired"
+
+
+class PaymentChannel(StrEnum):
+    """payments.channel（P2 自助支付预留；当前人工核销不产生记录）。"""
+
+    WECHAT_NATIVE = "wechat_native"
+    ALIPAY_QR = "alipay_qr"
+    WECHAT_H5 = "wechat_h5"
+
+
+class PaymentStatus(StrEnum):
+    """payments.status（P2）：渠道侧支付流水状态机。"""
+
+    CREATED = "created"
+    PAYING = "paying"
+    PAID = "paid"
+    FAILED = "failed"
+    CLOSED = "closed"
+    REFUNDED = "refunded"
+
+
+class PlanStatus(StrEnum):
+    """subscription_plans.status：active 可售，retired 停售（存量不受影响）。"""
+
+    ACTIVE = "active"
+    RETIRED = "retired"
+
+
+class SubscriptionStatus(StrEnum):
+    """subscriptions.status：active → expired（period_end 到期）/ cancelled。"""
+
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
+class RuleSetStatus(StrEnum):
+    """rule_sets 版本状态机：draft → active（同法版本仅一版 active）→ retired。"""
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    RETIRED = "retired"
+
+
+class RuleKind(StrEnum):
+    """rule_items.kind：规则表达式类型（注入 extractor 预筛 / comparator 复核）。"""
+
+    REGEX = "regex"
+    KEYWORD = "keyword"
+    NUMERIC = "numeric"
+    DATE = "date"
+
+
+class RuleAction(StrEnum):
+    """rule_items.action：hint=预筛召回；must=强制核对；veto=可推翻 LLM 满足判定。"""
+
+    HINT = "hint"
+    MUST = "must"
+    VETO = "veto"
+
+
+class AiPurpose(StrEnum):
+    """ai_model_config.purpose：模型用途映射（02 §7 重/轻两档 + 向量）。"""
+
+    HEAVY = "heavy"
+    LIGHT = "light"
+    EMBED = "embed"
+
+
+class LlmPurpose(StrEnum):
+    """llm_calls.purpose：调用场景记账维度。"""
+
+    EXTRACT = "extract"
+    JUDGE = "judge"
+    SUMMARY = "summary"
+    RETRY = "retry"
+    EMBED = "embed"
