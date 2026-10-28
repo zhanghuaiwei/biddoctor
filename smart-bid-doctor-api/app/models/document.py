@@ -25,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.enums import EmbeddingStatus, ParseStatus
 from app.models.base import EMBED_DIM, Base, PkMixin, TimestampMixin, UuidMixin
 
 
@@ -41,10 +42,10 @@ class Document(Base, PkMixin, UuidMixin, TimestampMixin):
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     total_pages: Mapped[int | None] = mapped_column(Integer)
     is_scanned_ratio: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
-    parse_status: Mapped[str] = mapped_column(String(16), default="pending")
+    parse_status: Mapped[str] = mapped_column(String(16), default=ParseStatus.PENDING)
     # pending | running | done | failed | need_review
     parse_warnings: Mapped[list[str]] = mapped_column(JSONB, default=list)
-    embedding_status: Mapped[str] = mapped_column(String(16), default="pending")
+    embedding_status: Mapped[str] = mapped_column(String(16), default=EmbeddingStatus.PENDING)
     # pending | done | skipped | failed
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

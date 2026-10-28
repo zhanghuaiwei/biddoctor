@@ -30,6 +30,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: smart-bid-doctor-api/uv.lock
+          python-version: "3.12"   # 与生产镜像 python:3.12-slim 对齐，防 CI 装最新 CPython 造成测试/运行时漂移
       - run: uv sync --frozen
       - run: uv run ruff check app tests scripts
       - name: Tests (unit + DB integration)
@@ -54,4 +55,5 @@ jobs:
           cache: pnpm
           cache-dependency-path: smart-bid-doctor-web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: pnpm lint   # ESLint（vue/essential + ts recommended，防错不排版）
       - run: pnpm build   # vue-tsc + vite build 类型门禁

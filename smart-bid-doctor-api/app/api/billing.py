@@ -9,10 +9,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.core.deps import get_current_user, require_admin
-from app.core.errors import ERROR_CODES, AppError
+from app.core.deps import get_current_user
 from app.models import User
-from app.schemas.billing import GrantOut, OrderIn, OrderOut, OrderPage, QuotaOut, QuotaPackOut
+from app.schemas.billing import OrderIn, OrderOut, OrderPage, QuotaOut, QuotaPackOut
 from app.services import audit_svc, billing_svc, quota_svc
 
 router = APIRouter(tags=["billing"])
@@ -47,19 +46,5 @@ def my_orders(
     rows, total = billing_svc.list_orders(db, user.id, limit=limit, offset=offset)
     return OrderPage(items=[OrderOut.model_validate(o) for o in rows], total=total)
 
-
-@router.post("/admin/orders/{order_no}/grant", response_model=GrantOut)
-def grant_order(
-    order_no: str,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    order = billing_svc.get_by_order_no(db, order_no)
-    if order is None:
-        raise AppError(ERROR_CODES["ORDER_NOT_FOUND"], "ORDER_NOT_FOUND", "订单不存在")
-    billing_svc.grant(db, admin, order)
-    audit_svc.log(
-        db, admin.id, audit_svc.AuditAction.ORDER_GRANT,
-        target=order.order_no, detail={"user_id": order.user_id},
-    )
-    return GrantOut(order_no=order.order_no, status="granted")
+# 核销端点归口管理端：POST /api/admin/orders/{order_no}/grant（app/api/admin/biz.py，
+# 权限点 admin:order:grant，05 §10）——v1 的 require_admin 版本并入，路径/语义不变

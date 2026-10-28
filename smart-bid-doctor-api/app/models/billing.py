@@ -12,6 +12,7 @@ from decimal import Decimal
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.enums import OrderStatus
 from app.models.base import Base, PkMixin, TimestampMixin
 
 
@@ -34,7 +35,7 @@ class Order(Base, PkMixin, TimestampMixin):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
     sku: Mapped[str] = mapped_column(String(16))  # cmp_x5 | cmp_x20
     amount_cny: Mapped[Decimal] = mapped_column(Numeric(8, 2))
-    status: Mapped[str] = mapped_column(String(16), default="pending")
+    status: Mapped[str] = mapped_column(String(16), default=OrderStatus.PENDING)
     # pending | granted | expired | refunded
     note: Mapped[str | None] = mapped_column(String(256))
     granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

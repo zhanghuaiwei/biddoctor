@@ -53,6 +53,10 @@ def test_full_crud_flow(client, user_token, admin_token):
     assert client.get("/api/projects", headers=h, params={"status": "draft"}).json()["total"] == 1
     assert client.get("/api/projects", headers=h, params={"status": "archived"}).json()["total"] == 0
 
+    # 2.1 项目详情正常路径（02 §9.2 GET /projects/{pid}）
+    detail = client.get(f"/api/projects/{pid}", headers=h).json()
+    assert detail["name"] == "集成测试项目" and detail["status"] == "draft"
+
     # 2.1 清单为空表（引擎未接入，返回 0 项 + 分类统计空）
     empty = client.get(f"/api/projects/{pid}/check-items", headers=h).json()
     assert empty["items"] == [] and empty["total"] == 0 and empty["stats"] == {}
@@ -72,6 +76,11 @@ def test_full_crud_flow(client, user_token, admin_token):
     st = client.get(f"/api/projects/documents/{tender_doc_id}/status", headers=h).json()
     assert st["parse_status"] == "pending" and st["task_id"] == body["task_id"]
     assert st["warnings"] == []
+
+    # 3.2 文档列表（02 §9.2 GET /projects/{pid}/documents）
+    docs = client.get(f"/api/projects/{pid}/documents", headers=h).json()
+    assert [d["id"] for d in docs["items"]] == [tender_doc_id]
+    assert docs["items"][0]["role"] == "tender" and docs["items"][0]["parse_status"] == "pending"
 
     # 4. 上传同一 PDF 作为投标文件 → sha256 去重 → parse_status=done
     r = client.post(
@@ -95,6 +104,10 @@ def test_full_crud_flow(client, user_token, admin_token):
     r = client.post(f"/api/projects/{pid}/compare", headers=h)
     assert r.status_code == 402 and r.json()["error"]["code"] == "QUOTA_EXCEEDED"
 
+    # 6.1 对照结果查询：尚无对照记录 → 404 COMPARISON_NOT_FOUND
+    r = client.get(f"/api/projects/{pid}/comparison", headers=h)
+    assert r.status_code == 404 and r.json()["error"]["code"] == "COMPARISON_NOT_FOUND"
+
     # 7. 下单 → 管理员核销 → 次数到账（订单分页含 total）
     r = client.post("/api/orders", headers=h, json={"sku": "cmp_x5"})
     assert r.status_code == 201, r.text
@@ -113,6 +126,10 @@ def test_full_crud_flow(client, user_token, admin_token):
     task_id = r.json()["task_id"]
     assert client.get(f"/api/tasks/{task_id}", headers=h).status_code == 200
     assert client.get("/api/me/quota", headers=h).json()["packs"][0]["remain"] == 4
+
+    # 8.1 对照记录可查（202 创建即落 pending 记录，02 §9.4 GET /projects/{pid}/comparison）
+    cmp_ = client.get(f"/api/projects/{pid}/comparison", headers=h).json()
+    assert cmp_["status"] == "pending" and cmp_["tender_doc_id"] == tender_doc_id
 
     # 9. 重复核销 → 409
     r = client.post(f"/api/admin/orders/{order_no}/grant", headers=_auth(admin_token))

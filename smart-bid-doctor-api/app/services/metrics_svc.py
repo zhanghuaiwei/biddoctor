@@ -5,6 +5,7 @@ import datetime as dt
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
+from app.core.enums import TaskStatus
 from app.models import LlmCall, Task
 
 
@@ -18,7 +19,7 @@ def daily_stats(db: Session, day_start: dt.datetime, day_end: dt.datetime) -> di
     )
     by_status = {status: int(n) for status, n in rows}
     total = sum(by_status.values())
-    succeeded = by_status.get("succeeded", 0)
+    succeeded = by_status.get(TaskStatus.SUCCEEDED, 0)
     avg_secs = (
         db.query(
             sa.func.avg(
@@ -37,7 +38,7 @@ def daily_stats(db: Session, day_start: dt.datetime, day_end: dt.datetime) -> di
         .filter(
             Task.created_at >= day_start,
             Task.created_at < day_end,
-            Task.status == "failed",
+            Task.status == TaskStatus.FAILED,
             Task.error_code.is_not(None),
         )
         .group_by(Task.error_code)
@@ -51,7 +52,7 @@ def daily_stats(db: Session, day_start: dt.datetime, day_end: dt.datetime) -> di
         .scalar()
     )
     backlog = (
-        db.query(sa.func.count(Task.id)).filter(Task.status == "pending").scalar() or 0
+        db.query(sa.func.count(Task.id)).filter(Task.status == TaskStatus.PENDING).scalar() or 0
     )
     return {
         "tasks_total": total,

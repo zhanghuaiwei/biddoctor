@@ -67,7 +67,7 @@
                     ▼
           services 层（事务边界：commit/rollback/行锁都在这里）
                     ▼
-          engine 层（纯函数，M1/M2 接入）      PostgreSQL 16（12 张表）
+          engine 层（纯函数，M1/M2 接入）      PostgreSQL 16（40 张表）
 
 任务链路（异步）：
 api 建任务（与业务同事务，只 flush）──▶ worker runner
@@ -100,7 +100,7 @@ smart-bid-doctor/
 │   │   │   ├── ratelimit.py   #   滑动窗口限流器
 │   │   │   ├── db.py          #   引擎/会话（pool_pre_ping）
 │   │   │   └── logging.py     #   结构化 JSON 日志（request_id 贯穿）
-│   │   ├── models/            # ORM 模型（DDL 唯一来源，12 张表 → alembic 迁移）
+│   │   ├── models/            # ORM 模型（DDL 唯一来源，40 张表 → alembic 迁移）
 │   │   ├── schemas/           # Pydantic 请求/响应契约（全端点 response_model）
 │   │   ├── api/               # 路由层（薄；禁直接 ORM，唯一例外 healthz）
 │   │   │   ├── auth.py        #   验证码/登录（防爆破锁定）
