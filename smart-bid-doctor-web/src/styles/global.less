@@ -327,6 +327,45 @@ html .el-tag {
   vertical-align: middle;
 }
 
+// ===== 共享工具类（列表页分页/面板工具区/表格单元，视图内不再各自定义）=====
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.panel-tools {
+  display: flex;
+  gap: 10px;
+}
+
+.mt {
+  margin-top: 16px;
+}
+
+.cell-id {
+  color: @c-text-muted;
+  font-size: @fs-xs;
+  letter-spacing: 0.02em;
+}
+
+.cell-strong {
+  font-size: @fs-sm;
+  font-weight: 600;
+  color: @c-text;
+}
+
+.cell-muted {
+  color: @c-text-muted;
+  font-size: @fs-xs;
+}
+
+.cell-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: @fs-xs;
+  color: @c-text-sub;
+}
+
 // ===== 弹层 / 分页 / 空状态 =====
 html .el-dialog {
   border-radius: @radius-lg;

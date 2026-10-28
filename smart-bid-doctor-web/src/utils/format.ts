@@ -20,3 +20,13 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
+
+/** 比例（0~1）→ 整数百分比；空值 → '—' */
+export function formatPercent(v: number | null | undefined): string {
+  return v == null ? '—' : `${Math.round(v * 100)}%`
+}
+
+/** 数值千分位（zh-CN）；空值 → '0' */
+export function formatLocaleNum(v: number | null | undefined): string {
+  return v == null ? '0' : v.toLocaleString('zh-CN')
+}
