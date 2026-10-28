@@ -88,6 +88,43 @@ def test_admin_404_same_shape_for_non_admin():
     assert set(r.json()) == {"error"}
 
 
+def test_unhandled_exception_returns_unified_error(monkeypatch):
+    """未捕获异常兜底：500 也必须是统一错误体，dev 下回具体异常信息（02 §11）"""
+    from app.services import auth_svc
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("boom: column users.org_id does not exist")
+
+    monkeypatch.setattr(auth_svc, "request_email_code", _boom)
+    local = TestClient(app, raise_server_exceptions=False)
+    r = local.post("/api/auth/email-code", json={"email": "diag@example.com"})
+    assert r.status_code == 500
+    body = r.json()
+    assert body["error"]["code"] == "INTERNAL_ERROR"
+    assert "boom: column users.org_id does not exist" in body["error"]["message"]
+    assert r.headers["X-Request-ID"]  # ServerErrorMiddleware 外层不带头，handler 需补回
+
+
+def test_unhandled_exception_masks_detail_in_prod(monkeypatch):
+    """prod 不向前端泄露内部细节，只给 request_id 供日志定位"""
+    import types
+
+    import app.main as main_mod
+    from app.services import auth_svc
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("secret internal detail")
+
+    monkeypatch.setattr(auth_svc, "request_email_code", _boom)
+    monkeypatch.setattr(main_mod, "get_settings", lambda: types.SimpleNamespace(env="prod"))
+    local = TestClient(app, raise_server_exceptions=False)
+    r = local.post("/api/auth/email-code", json={"email": "diag@example.com"})
+    assert r.status_code == 500
+    message = r.json()["error"]["message"]
+    assert "secret internal detail" not in message
+    assert "request_id" in message
+
+
 def test_healthz_shape():
     r = client.get("/api/healthz")
     assert r.status_code == 200

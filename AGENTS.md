@@ -60,7 +60,7 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 | 分层 | `api/` 薄（校验+编排+审计，**禁直接 ORM 查询**，唯一例外 healthz）→ `services/` 事务边界 → `engine/` 纯函数；复用聚合查询单一实现 |
 | 响应契约 | 所有端点必须 `response_model=` Pydantic 模型，禁止裸 dict；分页**全站统一 limit/offset**（`Query(ge=, le=)`，列表响应带 `total`） |
 | 枚举 | 状态/角色/类型取值一律引用 `app/core/enums.py`（StrEnum 注册表）与前端 `src/constants/enums.ts`，禁散落字面量；新增取值先改两处注册表再同步文档（03 §3 取值域） |
-| 错误码 | `raise AppError(status, "UPPER_SNAKE_CODE", "中文提示")`，code 必须登记 `app/core/errors.py::ERROR_CODES`（`tests/test_errors_registry.py` AST 守卫：未登记/状态不一致即红）；响应恒为 `{"error": {"code", "message"}}` |
+| 错误码 | `raise AppError(status, "UPPER_SNAKE_CODE", "中文提示")`，code 必须登记 `app/core/errors.py::ERROR_CODES`（`tests/test_errors_registry.py` AST 守卫：未登记/状态不一致即红）；响应恒为 `{"error": {"code", "message"}}`；**未捕获异常由 `main.py` 兜底为 500 `INTERNAL_ERROR`（不再是纯文本 `Internal Server Error`）：dev 回 `异常类型: 描述`（截断 500 字），prod 只回通用提示 + request_id，禁向前端泄露 SQL/路径等内部细节** |
 | 事务 | commit 只出现在 service/api 编排层；`task_svc.create` 只 flush；失败路径 `db.rollback()` 防半提交；**计数型规则（免费配额等）必须 `WITH FOR UPDATE` 行锁**；**一次性凭据（验证码等）必须原子 UPDATE 消费 + rowcount 判定**；**前置校验先于扣减**（对照发起：双文件就绪 400 先于配额扣减 402，避免无谓扣减+回滚写放大） |
 | 审计 | `audit_svc.log()` 独立事务、失败不阻断主业务；action 一律引用 `AuditAction` 常量（禁魔法字符串）；自动附带 `request_id`；**不参与业务事务**；**只覆盖写/状态变更操作**（查询/分页/导出/下载等只读不写审计，不以 HTTP 方法判定写操作）；detail 禁明文敏感数据 |
 | 时间 | 全部 `dt.datetime.now(dt.UTC)` + `TIMESTAMPTZ`；北京时区调度用 UTC+8 固定偏移；**用户可见日期（订单号等）显式 +8h，禁止依赖容器本地时钟** |

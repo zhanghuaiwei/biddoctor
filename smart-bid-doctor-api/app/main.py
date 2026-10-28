@@ -1,3 +1,4 @@
+import logging
 import re
 import uuid
 
@@ -114,6 +115,30 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=422,
             content={"error": {"code": "VALIDATION_ERROR", "message": f"{loc}: {first.get('msg', '')}"}},
+        )
+
+    @app_.exception_handler(Exception)
+    async def unhandled_error_handler(request: Request, exc: Exception):
+        """未捕获异常兜底：统一错误体 + 具体信息（02 §11）。
+
+        不加此 handler 时 Starlette 的 ServerErrorMiddleware 直接返回纯文本
+        `Internal Server Error`，前端拿不到任何可读信息，排查只能翻服务端日志。
+        分级：dev 回 `异常类型: 描述`（.env 本地调试所需），prod 只回 request_id，
+        避免把 SQL/文件路径/内部实现细节泄露给前端。
+        """
+        rid = request_id_var.get()
+        logging.getLogger(__name__).exception(
+            "unhandled error %s %s", request.method, request.url.path
+        )
+        if get_settings().env == "dev":
+            detail = f"{type(exc).__name__}: {exc}"[:500]
+        else:
+            detail = f"服务器内部错误，请稍后重试（request_id: {rid}）"
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"code": "INTERNAL_ERROR", "message": detail}},
+            # ServerErrorMiddleware 位于中间件栈最外层，不会带上 request_id 中间件写的头，这里补回
+            headers={"X-Request-ID": rid},
         )
 
     @app_.exception_handler(StarletteHTTPException)

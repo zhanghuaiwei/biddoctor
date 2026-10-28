@@ -13,11 +13,12 @@ ERROR_CODES: dict[str, int] = {
     "LOGIN_LOCKED": 429,
     "ACCOUNT_BANNED": 403,
     "CODE_TOO_FREQUENT": 429,
-    # 通用（以下三个由 main.py handler / ratelimit 中间件直接产出，不经 AppError）
+    # 通用（以下由 main.py handler / ratelimit 中间件直接产出，不经 AppError）
     "VALIDATION_ERROR": 422,
     "NOT_FOUND": 404,
     "HTTP_ERROR": 0,  # 动态状态，随 HTTPException
     "RATE_LIMITED": 429,
+    "INTERNAL_ERROR": 500,  # 未捕获异常兜底：dev 回具体异常，prod 只回 request_id
     "FORBIDDEN": 403,
     # 项目 / 文件
     "PROJECT_NOT_FOUND": 404,
