@@ -14,6 +14,7 @@ class OrderIn(BaseModel):
 
 
 class OrderOut(BaseModel):
+    id: int
     order_no: str
     sku: str
     amount_cny: Decimal

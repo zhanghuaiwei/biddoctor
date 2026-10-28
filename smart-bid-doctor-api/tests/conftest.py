@@ -63,6 +63,13 @@ def client():
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
 
+    # 平台种子（与 scripts/bootstrap.py 同一步骤）：内置角色/菜单/参数/法务 v1 等
+    from app.core.db import SessionLocal
+    from app.services import seed_svc
+
+    with SessionLocal() as db:
+        seed_svc.run(db)
+
     yield TestClient(app)
 
     with engine.begin() as conn:

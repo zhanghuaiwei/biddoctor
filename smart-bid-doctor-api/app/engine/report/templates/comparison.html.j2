@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+{# 对照报告模板（02 §6.2）：红黄绿分级 + 投标证据页溯源 + AIGC 标识 #}
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="{{ meta.generator }} AI-assisted">
+  <meta name="ai-generated" content="true">
+  <meta name="ai-model" content="{{ meta.model }}">
+  <meta name="ai-generated-at" content="{{ meta.generated_at_bj }}">
+  <!-- smart-bid-doctor ai-report {{ meta.generated_at_bj }} -->
+  <title>对照检查报告 · {{ project.name }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+           color: #1c2333; margin: 0; background: #f5f6fa; }
+    .sheet { max-width: 860px; margin: 24px auto; background: #fff; padding: 48px 56px;
+             box-shadow: 0 2px 16px rgba(16, 24, 40, .08); border-radius: 8px; }
+    .ai-banner { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+                 font-size: 12px; padding: 8px 14px; border-radius: 6px; margin-bottom: 28px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: #667085; font-size: 13px; margin-bottom: 24px; }
+    .stats { display: flex; gap: 12px; margin-bottom: 28px; }
+    .stat { border: 1px solid #e4e7ef; border-radius: 8px; padding: 10px 18px; }
+    .stat b { display: block; font-size: 20px; }
+    .stat.red b { color: #d92d20; } .stat.yellow b { color: #dc6803; }
+    .stat.green b { color: #067647; }
+    .stat span { font-size: 12px; color: #667085; }
+    .row { border-left: 3px solid #d0d5dd; padding: 10px 14px; margin-bottom: 14px;
+           background: #fafbfc; border-radius: 0 6px 6px 0; }
+    .row.red { border-left-color: #d92d20; } .row.yellow { border-left-color: #dc6803; }
+    .row.green { border-left-color: #067647; }
+    .verdict { font-size: 11px; color: #fff; border-radius: 999px; padding: 2px 10px; }
+    .verdict.red { background: #d92d20; } .verdict.yellow { background: #dc6803; }
+    .verdict.green { background: #067647; }
+    .row .code { font-weight: 600; font-size: 13px; margin-left: 8px; }
+    .row .req { margin: 6px 0; font-size: 14px; }
+    .row .reason { font-size: 13px; color: #475467; }
+    .row blockquote { margin: 6px 0; padding: 6px 10px; background: #fff;
+                      border: 1px dashed #d0d5dd; font-size: 12px; color: #475467; }
+    .page { font-size: 11px; color: #98a2b3; }
+    .overridden { font-size: 11px; color: #175cd3; }
+    footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #e4e7ef;
+             font-size: 11px; color: #98a2b3; }
+    @media print { body { background: #fff; } .sheet { box-shadow: none; margin: 0; max-width: none; } }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="ai-banner">⚠ {{ meta.ai_mark }}（生成时间 {{ meta.generated_at_bj }}）—— 辅助人工复核参考，红色项必须人工确认。</div>
+    <h1>招标 × 投标对照检查报告</h1>
+    <div class="sub">项目：{{ project.name }} · 行业：{{ project.industry }} · 对照编号：{{ comparison_id }}</div>
+
+    <div class="stats">
+      <div class="stat red"><b>{{ stats.red }}</b><span>红色·高风险</span></div>
+      <div class="stat yellow"><b>{{ stats.yellow }}</b><span>黄色·待确认</span></div>
+      <div class="stat green"><b>{{ stats.green }}</b><span>绿色·基本满足</span></div>
+    </div>
+
+    {% for it in items %}
+    <div class="row {{ it.level }}">
+      <span class="verdict {{ it.level }}">{{ it.level }}</span>
+      <span class="code">{{ it.code or '—' }}</span>
+      {% if it.rule_overridden %}<span class="overridden">规则复核已推翻</span>{% endif %}
+      <div class="req">{{ it.requirement or '' }}</div>
+      <div class="reason">{{ it.reason }}</div>
+      {% if it.bid_quote %}<blockquote>{{ it.bid_quote }}</blockquote>{% endif %}
+      <div class="page">
+        {% if it.bid_ref_page %}投标文件证据：第 {{ it.bid_ref_page }} 页{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <footer>
+      {{ disclaimer }}<br>
+      {{ meta.ai_mark }} · 生成引擎 {{ meta.generator }} · 生成时间 {{ meta.generated_at_bj }}（北京时间）
+    </footer>
+  </div>
+</body>
+</html>

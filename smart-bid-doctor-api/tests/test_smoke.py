@@ -17,18 +17,51 @@ def test_openapi_paths():
         "/api/projects/{pid}/comparison",
         "/api/projects/documents/{did}/status",
         "/api/projects/{pid}/check-items",
+        "/api/projects/{pid}/checklist-report",
         "/api/projects/{pid}/compare",
+        "/api/projects/{pid}/reports",
         "/api/tasks/{tid}",
         "/api/orders",
         "/api/me/quota",
-        "/api/admin/orders/{order_no}/grant",
+        "/api/me/menus",
+        "/api/notices",
+        "/api/legal/current",
+        "/api/legal/agreements",
+        "/api/attachments",
+        "/api/reports/{rid}/export",
+        "/api/reports/{rid}/ack",
+        "/api/findings/{fid}/feedback",
         "/api/healthz",
         "/api/internal/metrics",
+        # 管理端（05 §10）：抽样关键路径，全量见 app/api/admin/*
+        "/api/admin/sys/users",
+        "/api/admin/sys/orgs/tree",
+        "/api/admin/sys/roles",
+        "/api/admin/sys/configs",
+        "/api/admin/sys/dicts",
+        "/api/admin/sys/notices",
+        "/api/admin/sys/jobs",
+        "/api/admin/sys/invites",
+        "/api/admin/monitor/overview",
+        "/api/admin/monitor/tasks",
+        "/api/admin/alerts",
+        "/api/admin/logs/audit",
+        "/api/admin/logs/login",
+        "/api/admin/logs/oper",
+        "/api/admin/stats/daily",
+        "/api/admin/orders",
+        "/api/admin/attachments",
+        "/api/admin/legal/documents",
+        "/api/admin/legal/signatures",
+        "/api/admin/ai/models",
+        "/api/admin/ai/prompts",
+        "/api/admin/subs",
+        "/api/admin/subs/plans",
+        "/api/admin/rules/sets",
+        "/api/admin/payments",
     ]
     for p in expected:
         assert p in paths, f"missing route: {p}"
-    # 01 §6 接口总览：报告导出端点必须存在（业务未接入，501 占位）
-    assert "/api/reports/{rid}/export" in paths
     assert "/api/reports/{rid}" in paths
 
 
@@ -48,13 +81,11 @@ def test_unified_error_body():
     assert r.json()["error"]["code"] == "NOT_FOUND"
 
 
-def test_business_stub_is_501_documented():
-    """业务端点必须显式 501 且在 OpenAPI 中声明，不许半实现"""
-    spec = app.openapi()
-    op = spec["paths"]["/api/projects/{pid}/checklist-report"]["post"]
-    assert "501" in op.get("responses", {})
-    op_export = spec["paths"]["/api/reports/{rid}/export"]["get"]
-    assert "501" in op_export.get("responses", {})
+def test_admin_404_same_shape_for_non_admin():
+    """管理端越权 404 同形：非 admin 访问 /api/admin/* 不泄露管理面存在性（05 §11）"""
+    r = client.get("/api/admin/monitor/overview")  # 未带 token
+    assert r.status_code == 401
+    assert set(r.json()) == {"error"}
 
 
 def test_healthz_shape():

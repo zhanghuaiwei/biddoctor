@@ -12,7 +12,8 @@ from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.models import User
 from app.schemas.billing import OrderIn, OrderOut, OrderPage, QuotaOut, QuotaPackOut
-from app.services import audit_svc, billing_svc, quota_svc
+from app.schemas.platform import PlanOut
+from app.services import audit_svc, billing_svc, quota_svc, subscription_svc
 
 router = APIRouter(tags=["billing"])
 
@@ -23,6 +24,14 @@ def my_quota(user: User = Depends(get_current_user), db: Session = Depends(get_d
         free_left=quota_svc.free_left(db, user.id),
         packs=[QuotaPackOut.model_validate(p) for p in quota_svc.packs(db, user.id)],
     )
+
+
+@router.get("/subs/plans", response_model=list[PlanOut])
+def list_active_plans(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """用户端订阅计划（仅 active 在售；管理端全量走 /admin/subs/plans）。"""
+    return subscription_svc.list_plans(db, only_active=True)
 
 
 @router.post("/orders", response_model=OrderOut, status_code=201)  # 02 §9.5 路径

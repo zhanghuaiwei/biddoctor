@@ -4,6 +4,7 @@
 审计/告警的 detail/metric 快照用 dict[str, Any]（结构随指标演进，不强锁）。
 """
 
+import uuid as _uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -430,7 +431,7 @@ class TaskAdminPage(BaseModel):
 
 class AttachmentOut(BaseModel):
     id: int
-    uuid: str
+    uuid: _uuid.UUID
     module: str
     business_id: int | None
     orig_name: str

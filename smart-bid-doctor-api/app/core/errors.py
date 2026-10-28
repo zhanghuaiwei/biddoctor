@@ -35,6 +35,8 @@ ERROR_CODES: dict[str, int] = {
     "DOC_NOT_READY": 400,
     "QUOTA_EXCEEDED": 402,
     "NOT_IMPLEMENTED": 501,
+    "REPORT_FILE_GONE": 410,   # 报告渲染产物已随留存策略清理
+    "FINDING_NOT_FOUND": 404,
     # 订单
     "BAD_SKU": 400,
     "ORDER_NOT_FOUND": 404,

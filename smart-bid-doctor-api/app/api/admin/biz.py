@@ -418,3 +418,25 @@ def admin_attachment_detail(
 
     row = attachment_svc.get_for_admin(db, attachment_id)
     return AttachmentOut.model_validate(row)
+
+
+@router.get("/attachments/{attachment_id}/download")
+def admin_download_attachment(
+    attachment_id: int,
+    _: User = Depends(require_perm("admin:attachment")),
+    db: Session = Depends(get_db),
+):
+    import os
+
+    from fastapi.responses import FileResponse
+
+    from app.services import attachment_svc
+
+    row = attachment_svc.get_for_admin(db, attachment_id)
+    if not os.path.exists(row.stored_path):
+        raise AppError(404, "ATTACHMENT_NOT_FOUND", "附件文件已清理")
+    return FileResponse(
+        row.stored_path,
+        filename=row.orig_name,
+        media_type=row.content_type or "application/octet-stream",
+    )

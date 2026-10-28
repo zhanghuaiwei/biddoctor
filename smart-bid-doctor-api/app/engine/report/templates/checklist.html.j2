@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+{# 清单报告模板（02 §6.2）：AIGC 显式标识 + 隐式水印 meta + 逐条页码溯源 #}
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# AIGC 隐式标识（05 §9.2）：元数据 + 隐式水印字段 #}
+  <meta name="generator" content="{{ meta.generator }} AI-assisted">
+  <meta name="ai-generated" content="true">
+  <meta name="ai-model" content="{{ meta.model }}">
+  <meta name="ai-generated-at" content="{{ meta.generated_at_bj }}">
+  <!-- smart-bid-doctor ai-report {{ meta.generated_at_bj }} -->
+  <title>废标风险检查清单 · {{ project.name }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+           color: #1c2333; margin: 0; background: #f5f6fa; }
+    .sheet { max-width: 860px; margin: 24px auto; background: #fff; padding: 48px 56px;
+             box-shadow: 0 2px 16px rgba(16, 24, 40, .08); border-radius: 8px; }
+    .ai-banner { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+                 font-size: 12px; padding: 8px 14px; border-radius: 6px; margin-bottom: 28px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: #667085; font-size: 13px; margin-bottom: 24px; }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+    .stat { border: 1px solid #e4e7ef; border-radius: 8px; padding: 10px 18px; }
+    .stat b { display: block; font-size: 20px; }
+    .stat span { font-size: 12px; color: #667085; }
+    .item { border-left: 3px solid #d0d5dd; padding: 10px 14px; margin-bottom: 14px;
+            background: #fafbfc; border-radius: 0 6px 6px 0; }
+    .item.mandatory { border-left-color: #d92d20; background: #fef3f2; }
+    .item .code { font-weight: 600; font-size: 13px; }
+    .item .cat { font-size: 11px; color: #667085; border: 1px solid #e4e7ef;
+                 border-radius: 999px; padding: 1px 8px; margin-left: 8px; }
+    .item .star { color: #d92d20; font-weight: 700; margin-left: 6px; }
+    .item .req { margin: 6px 0 4px; font-size: 14px; }
+    .item blockquote { margin: 6px 0; padding: 6px 10px; background: #fff;
+                       border: 1px dashed #d0d5dd; font-size: 12px; color: #475467; }
+    .item .page { font-size: 11px; color: #98a2b3; }
+    .note { background: #eff8ff; border: 1px solid #b2ddff; color: #175cd3;
+            padding: 8px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+    footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #e4e7ef;
+             font-size: 11px; color: #98a2b3; }
+    @media print { body { background: #fff; } .sheet { box-shadow: none; margin: 0; max-width: none; } }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="ai-banner">⚠ {{ meta.ai_mark }}（生成时间 {{ meta.generated_at_bj }}）—— 辅助人工复核参考，高危项须人工确认。</div>
+    <h1>废标风险检查清单</h1>
+    <div class="sub">项目：{{ project.name }} · 行业：{{ project.industry }} · 招标文件：{{ document.orig_name }}
+      {%- if document.total_pages %}（{{ document.total_pages }} 页）{% endif -%}
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>{{ stats.total }}</b><span>条款总数</span></div>
+      <div class="stat"><b>{{ stats.mandatory }}</b><span>★强制/否决项</span></div>
+      {% for cat, n in stats.by_category.items() %}
+      <div class="stat"><b>{{ n }}</b><span>{{ cat }}</span></div>
+      {% endfor %}
+    </div>
+
+    {% for note in notes %}<div class="note">{{ note }}</div>{% endfor %}
+
+    {% for it in items %}
+    <div class="item {% if it.is_mandatory %}mandatory{% endif %}">
+      <span class="code">{{ it.code }}</span>
+      <span class="cat">{{ it.category }}</span>
+      {% if it.is_mandatory %}<span class="star">★ 否决项</span>{% endif %}
+      <div class="req">{{ it.requirement }}</div>
+      <blockquote>{{ it.raw_text }}</blockquote>
+      <div class="page">原文出处：第 {{ it.ref_page }} 页{% if it.check_hint %} · 自查提示：{{ it.check_hint }}{% endif %}</div>
+    </div>
+    {% endfor %}
+
+    <footer>
+      {{ disclaimer }}<br>
+      {{ meta.ai_mark }} · 生成引擎 {{ meta.generator }} · 生成时间 {{ meta.generated_at_bj }}（北京时间）
+    </footer>
+  </div>
+</body>
+</html>

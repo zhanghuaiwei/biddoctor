@@ -2,10 +2,12 @@
 
 - 上传原件 PDF：默认留存 30 天（projects.retain_until）→ 到期删文件 + documents 软删
 - 软删 documents 超 180 天 → 硬删（doc_blocks 经 FK ON DELETE CASCADE 级联）
-- llm_calls / audit_logs / tasks：365 天物理 DELETE（量小，分区外简单删除）
+- 软删 attachments 超 180 天 → 硬删 + 无引用物理文件回收（05 §7 引用计数同 documents）
+- llm_calls / audit_logs / tasks：365 天物理 DELETE；login/oper 日志 180 天（05 §5.1）
 - 所有删除动作写 audit_logs（action='data_purge'）
 
-「阅后即焚」（报告生成即删原件）属于业务流程触发，不在本任务范围（M1 报告链路接入时实现）。
+「阅后即焚」（报告生成即删原件）为业务触发（handlers/checklist.py 软删 documents），
+本任务负责其物理回收。
 """
 
 import datetime as dt
@@ -17,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import AuditLog, Document, LlmCall, Project, Task
-from app.services import audit_svc
+from app.services import attachment_svc, audit_svc, log_svc
 from app.services.storage import LocalStorage
 from app.worker.handlers.base import stub_done
 
@@ -98,12 +100,20 @@ def run(task: dict, db: Session) -> None:
             .delete(synchronize_session=False)
         )
 
-    # 3) 运维表 365 天物理删除（llm_calls / audit_logs / tasks 均按 created_at）
+    # 3) 软删超 180 天的 attachments：无引用物理文件回收 + 行硬删（05 §7）
+    stats["attachments_removed"] = attachment_svc.hard_delete_expired(
+        db, now - dt.timedelta(days=REPORT_RETENTION_DAYS)
+    )
+
+    # 4) 运维表 365 天物理删除（llm_calls / audit_logs / tasks 均按 created_at）
     for model, key in ((LlmCall, "llm_calls"), (Task, "tasks"), (AuditLog, "audit_logs")):
         cutoff = now - dt.timedelta(days=OPS_RETENTION_DAYS)
         stats[key] = (
             db.query(model).filter(model.created_at < cutoff).delete(synchronize_session=False)
         )
+
+    # 5) 登录/操作日志 180 天留存（05 §5.1 表 3）
+    stats["sys_logs_removed"] = log_svc.purge_expired(db, now)
 
     db.commit()
     audit_svc.log(db, None, audit_svc.AuditAction.DATA_PURGE, target=f"task:{task['id']}",
