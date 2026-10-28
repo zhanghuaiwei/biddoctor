@@ -1,17 +1,12 @@
 <!-- AI 治理（05 §9）：模型注册（计价快照/开关）+ Prompt 版本管理（激活须 eval_score 锚定） -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <p class="page-eyebrow">AI Governance</p>
-        <h1 class="page-title">AI 治理</h1>
-        <p class="page-desc">模型注册与 Prompt 版本管理：切换供应商=新增注册行，prompt 漂移即评测可追溯</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader eyebrow="AI Governance" title="AI 治理" desc="模型注册与 Prompt 版本管理：切换供应商=新增注册行，prompt 漂移即评测可追溯">
+      <template #actions>
         <el-button @click="modelOpen = true">注册模型</el-button>
         <el-button type="primary" @click="promptOpen = true">新增 Prompt</el-button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <el-card class="lift-card cascade-in">
       <template #header>
@@ -59,9 +54,11 @@
         <el-table-column prop="version" label="版本" width="80" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
-              {{ row.is_active ? '生效中' : '备选' }}
-            </el-tag>
+            <EnumTag
+              :value="row.is_active ? 'active' : 'idle'"
+              :labels="{ active: '生效中', idle: '备选' }"
+              :tags="{ active: 'success', idle: 'info' }"
+            />
           </template>
         </el-table-column>
         <el-table-column label="评测锚点" min-width="220">
@@ -128,19 +125,25 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { activatePrompt, createAiModel, createPrompt as createPromptApi, listAiModels, listPrompts, updateAiModel } from '@/api/admin'
 import { notifyApiError } from '@/api/client'
+import EnumTag from '@/components/EnumTag.vue'
+import OverlayPanel from '@/components/OverlayPanel.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
 import type { AiModelOut, PromptOut } from '@/types'
 import { confirmAction } from '@/utils/confirm'
-import OverlayPanel from '@/components/OverlayPanel.vue'
 
 const models = ref<AiModelOut[]>([])
 const prompts = ref<PromptOut[]>([])
 const loading = ref(false)
-const saving = ref(false)
 const modelOpen = ref(false)
 const promptOpen = ref(false)
 
 const mForm = reactive({ model_code: '', purpose: 'heavy', input_price: '0', output_price: '0', rpm_limit: '', remark: '' })
 const pForm = reactive({ purpose: 'extract', name: '', version: 1, template: '' })
+
+// saving 由 createModel/createPrompt 共用（两个弹层不同时打开）
+const { pending: saving, run: runSave } = useApiAction('保存失败')
+const { run: runAi } = useApiAction()
 
 async function reload() {
   loading.value = true
@@ -159,34 +162,27 @@ async function createModel() {
     ElMessage.warning('请填写模型编码')
     return
   }
-  saving.value = true
-  try {
-    await createAiModel({
+  const res = await runSave(() =>
+    createAiModel({
       model_code: mForm.model_code,
       purpose: mForm.purpose,
       input_price: mForm.input_price || '0',
       output_price: mForm.output_price || '0',
       rpm_limit: mForm.rpm_limit ? Number(mForm.rpm_limit) : null,
       remark: mForm.remark || null,
-    })
-    ElMessage.success('模型已注册')
-    modelOpen.value = false
-    void reload()
-  } catch (e) {
-    notifyApiError(e, '注册失败')
-  } finally {
-    saving.value = false
-  }
+    }),
+  )
+  if (!res.ok) return
+  ElMessage.success('模型已注册')
+  modelOpen.value = false
+  void reload()
 }
 
 async function onToggleModel(row: AiModelOut, enabled: unknown) {
-  try {
-    await updateAiModel(row.id, { enabled: Boolean(enabled) })
-    row.enabled = Boolean(enabled)
-    ElMessage.success(enabled ? '已启用' : '已停用（新调用将被拒绝）')
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runAi(() => updateAiModel(row.id, { enabled: Boolean(enabled) }))
+  if (!res.ok) return
+  row.enabled = Boolean(enabled)
+  ElMessage.success(enabled ? '已启用' : '已停用（新调用将被拒绝）')
 }
 
 async function createPrompt() {
@@ -194,17 +190,11 @@ async function createPrompt() {
     ElMessage.warning('请填写名称与模板')
     return
   }
-  saving.value = true
-  try {
-    await createPromptApi({ ...pForm })
-    ElMessage.success('Prompt 版本已保存（未激活）')
-    promptOpen.value = false
-    void reload()
-  } catch (e) {
-    notifyApiError(e, '保存失败')
-  } finally {
-    saving.value = false
-  }
+  const res = await runSave(() => createPromptApi({ ...pForm }))
+  if (!res.ok) return
+  ElMessage.success('Prompt 版本已保存（未激活）')
+  promptOpen.value = false
+  void reload()
 }
 
 async function onActivate(row: PromptOut) {
@@ -215,23 +205,17 @@ async function onActivate(row: PromptOut) {
     { title: '切换 Prompt', confirmText: '确认' },
   )
   if (!ok) return
-  try {
-    await activatePrompt(row.id)
-    ElMessage.success('已切换生效')
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runAi(() => activatePrompt(row.id))
+  if (!res.ok) return
+  ElMessage.success('已切换生效')
+  void reload()
 }
 
 onMounted(reload)
 </script>
 
 <style scoped lang="less">
-.mt {
-  margin-top: 16px;
-}
-
+// .mt 取全局共享类
 .eval {
   font-size: @fs-xs;
   color: @c-text-sub;

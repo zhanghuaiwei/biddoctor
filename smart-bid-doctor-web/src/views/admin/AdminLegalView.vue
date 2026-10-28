@@ -1,16 +1,11 @@
 <!-- 法务文档管理（05 §8）：版本化（draft→effective→retired）+ 签署记录（PIPL 留痕） -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <p class="page-eyebrow">Compliance</p>
-        <h1 class="page-title">法务文档</h1>
-        <p class="page-desc">用户协议/隐私政策/免责声明版本化管理，同类型至多一版生效</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader eyebrow="Compliance" title="法务文档" desc="用户协议/隐私政策/免责声明版本化管理，同类型至多一版生效">
+      <template #actions>
         <el-button type="primary" @click="openCreate">上传新版本</el-button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <el-card class="lift-card cascade-in">
       <template #header>
@@ -29,9 +24,7 @@
         <el-table-column prop="title" label="标题" min-width="180" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="LEGAL_STATUS_TAGS[row.status as LegalStatus]" size="small">
-              {{ LEGAL_STATUS_LABELS[row.status as LegalStatus] ?? row.status }}
-            </el-tag>
+            <EnumTag :value="row.status" :labels="LEGAL_STATUS_LABELS" :tags="LEGAL_STATUS_TAGS" />
           </template>
         </el-table-column>
         <el-table-column label="生效时间" width="170">
@@ -70,9 +63,7 @@
           <template #default="{ row }">{{ formatDateTime(row.signed_at) }}</template>
         </el-table-column>
       </el-table>
-      <div class="pager">
-        <el-pagination layout="prev, pager, next" :total="sigTotal" :page-size="20" :current-page="sigPage" @current-change="onSigPage" />
-      </div>
+      <ListPager :total="sigTotal" :page="sigPage" :page-size="20" @change="onSigPage" />
     </el-card>
 
     <!-- 新版本 -->
@@ -111,12 +102,16 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { createLegalDoc, listLegalDocs, listSignatures, publishLegalDoc, retireLegalDoc } from '@/api/admin'
 import { notifyApiError } from '@/api/client'
+import EnumTag from '@/components/EnumTag.vue'
+import ListPager from '@/components/ListPager.vue'
+import OverlayPanel from '@/components/OverlayPanel.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
 import { LEGAL_DOC_TYPE_LABELS, LEGAL_STATUS_LABELS, LEGAL_STATUS_TAGS } from '@/constants/enums'
 import type { LegalDocType, LegalStatus } from '@/constants/enums'
 import type { LegalDocOut, SignatureOut } from '@/types'
 import { confirmAction } from '@/utils/confirm'
 import { formatDateTime } from '@/utils/format'
-import OverlayPanel from '@/components/OverlayPanel.vue'
 
 const docs = ref<LegalDocOut[]>([])
 const signatures = ref<SignatureOut[]>([])
@@ -124,7 +119,6 @@ const sigTotal = ref(0)
 const sigPage = ref(1)
 const loading = ref(false)
 const sigLoading = ref(false)
-const saving = ref(false)
 const createOpen = ref(false)
 const viewOpen = ref(false)
 const viewing = ref<LegalDocOut | null>(null)
@@ -133,6 +127,9 @@ const form = reactive({
   doc_type: 'user_agreement', version: '', title: '', content: '',
   effective_at: new Date().toISOString(),
 })
+
+const { pending: saving, run: runSave } = useApiAction('保存失败')
+const { run: runLegal } = useApiAction()
 
 async function reload() {
   loading.value = true
@@ -176,17 +173,11 @@ async function create() {
     ElMessage.warning('请完整填写版本号/标题/内容')
     return
   }
-  saving.value = true
-  try {
-    await createLegalDoc({ ...form, effective_at: new Date().toISOString() })
-    ElMessage.success('已保存为草稿')
-    createOpen.value = false
-    void reload()
-  } catch (e) {
-    notifyApiError(e, '保存失败')
-  } finally {
-    saving.value = false
-  }
+  const res = await runSave(() => createLegalDoc({ ...form, effective_at: new Date().toISOString() }))
+  if (!res.ok) return
+  ElMessage.success('已保存为草稿')
+  createOpen.value = false
+  void reload()
 }
 
 function viewDoc(row: LegalDocOut) {
@@ -200,13 +191,10 @@ async function onPublish(row: LegalDocOut) {
     { title: '发布生效', confirmText: '生效' },
   )
   if (!ok) return
-  try {
-    await publishLegalDoc(row.id)
-    ElMessage.success('已生效（写审计 legal_publish）')
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runLegal(() => publishLegalDoc(row.id))
+  if (!res.ok) return
+  ElMessage.success('已生效（写审计 legal_publish）')
+  void reload()
 }
 
 async function onRetire(row: LegalDocOut) {
@@ -215,29 +203,17 @@ async function onRetire(row: LegalDocOut) {
     danger: true,
   })
   if (!ok) return
-  try {
-    await retireLegalDoc(row.id)
-    ElMessage.success('已退役')
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runLegal(() => retireLegalDoc(row.id))
+  if (!res.ok) return
+  ElMessage.success('已退役')
+  void reload()
 }
 
 onMounted(reload)
 </script>
 
 <style scoped lang="less">
-.mt {
-  margin-top: 16px;
-}
-
-.pager {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
-
+// .mt/.pager 取全局共享类
 .doc-meta {
   margin: 0 0 10px;
   font-size: @fs-xs;

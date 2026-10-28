@@ -1,13 +1,7 @@
 <!-- 角色权限（05 §2）：角色列表 + 菜单树勾选绑定（sys_role_menu，写 sys_menu_update 审计） -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <p class="page-eyebrow">System</p>
-        <h1 class="page-title">角色权限</h1>
-        <p class="page-desc">内置角色（super_admin/operator）+ 菜单按钮权限点绑定</p>
-      </div>
-    </header>
+    <PageHeader eyebrow="System" title="角色权限" desc="内置角色（super_admin/operator）+ 菜单按钮权限点绑定" />
 
     <el-row :gutter="16" class="cascade-in">
       <el-col :xs="24" :md="9">
@@ -33,9 +27,7 @@
             <el-table-column prop="data_scope" label="数据范围" width="100" />
             <el-table-column label="状态" width="80">
               <template #default="{ row }">
-                <el-tag :type="COMMON_STATUS_TAGS[row.status as CommonStatus]" size="small">
-                  {{ COMMON_STATUS_LABELS[row.status as CommonStatus] ?? row.status }}
-                </el-tag>
+                <EnumTag :value="row.status" :labels="COMMON_STATUS_LABELS" :tags="COMMON_STATUS_TAGS" />
               </template>
             </el-table-column>
           </el-table>
@@ -81,8 +73,10 @@ import { onMounted, ref } from 'vue'
 
 import { listMenusFlat, listRoles, setRoleMenus } from '@/api/admin'
 import { notifyApiError } from '@/api/client'
+import EnumTag from '@/components/EnumTag.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
 import { COMMON_STATUS_LABELS, COMMON_STATUS_TAGS } from '@/constants/enums'
-import type { CommonStatus } from '@/constants/enums'
 import type { MenuNode, RoleOut } from '@/types'
 
 const roles = ref<RoleOut[]>([])
@@ -90,8 +84,9 @@ const current = ref<RoleOut | null>(null)
 const menuTree = ref<MenuNode[]>([])
 const checked = ref<number[]>([])
 const loading = ref(false)
-const saving = ref(false)
 const treeRef = ref<{ getCheckedKeys: (leafOnly?: boolean) => number[]; setCheckedKeys: (keys: number[]) => void }>()
+
+const { pending: saving, run: runSave } = useApiAction('保存失败')
 
 async function reload() {
   loading.value = true
@@ -155,16 +150,10 @@ async function fetchBoundIds(roleId: number, flat: Array<{ id: number; perm: str
 
 async function save() {
   if (!current.value || !treeRef.value) return
-  saving.value = true
-  try {
-    const ids = treeRef.value.getCheckedKeys(true)
-    await setRoleMenus(current.value.id, ids)
-    ElMessage.success(`角色「${current.value.name}」菜单权限已更新`)
-  } catch (e) {
-    notifyApiError(e, '保存失败')
-  } finally {
-    saving.value = false
-  }
+  const ids = treeRef.value.getCheckedKeys(true)
+  const res = await runSave(() => setRoleMenus(current.value?.id ?? 0, ids))
+  if (!res.ok) return
+  ElMessage.success(`角色「${current.value?.name}」菜单权限已更新`)
 }
 
 onMounted(() => {

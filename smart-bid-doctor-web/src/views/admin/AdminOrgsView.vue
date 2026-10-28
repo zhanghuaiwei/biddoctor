@@ -1,16 +1,11 @@
 <!-- 机构管理（05 §2.4）：树形 CRUD，软删且有子节点/在职用户时拒绝 -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <p class="page-eyebrow">System</p>
-        <h1 class="page-title">机构管理</h1>
-        <p class="page-desc">组织归属与权限范围（不做数据隔离）；SaaS 默认单根节点</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader eyebrow="System" title="机构管理" desc="组织归属与权限范围（不做数据隔离）；SaaS 默认单根节点">
+      <template #actions>
         <el-button type="primary" @click="openCreate(null)">新建根机构</el-button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <el-card class="lift-card cascade-in">
       <el-table :data="tree" v-loading="loading" row-key="id" default-expand-all size="large" empty-text="暂无机构">
@@ -19,9 +14,7 @@
         <el-table-column prop="leader" label="负责人" width="130" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="COMMON_STATUS_TAGS[row.status as CommonStatus]" size="small">
-              {{ COMMON_STATUS_LABELS[row.status as CommonStatus] ?? row.status }}
-            </el-tag>
+            <EnumTag :value="row.status" :labels="COMMON_STATUS_LABELS" :tags="COMMON_STATUS_TAGS" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="230" fixed="right">
@@ -60,15 +53,17 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { createOrg, deleteOrg, getOrgTree, updateOrg } from '@/api/admin'
 import { notifyApiError } from '@/api/client'
+import EnumTag from '@/components/EnumTag.vue'
+import OverlayPanel from '@/components/OverlayPanel.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
 import { COMMON_STATUS_LABELS, COMMON_STATUS_TAGS } from '@/constants/enums'
 import type { CommonStatus } from '@/constants/enums'
 import type { OrgNode } from '@/types'
 import { confirmAction } from '@/utils/confirm'
-import OverlayPanel from '@/components/OverlayPanel.vue'
 
 const tree = ref<OrgNode[]>([])
 const loading = ref(false)
-const saving = ref(false)
 const formOpen = ref(false)
 const editId = ref<number | null>(null)
 const parentId = ref<number | null>(null)
@@ -76,6 +71,9 @@ const parentId = ref<number | null>(null)
 const form = reactive({
   name: '', code: '', leader: '', sort: 0, status: 'active' as CommonStatus,
 })
+
+const { pending: saving, run: runSave } = useApiAction('保存失败')
+const { run: runDelete } = useApiAction()
 
 async function reload() {
   loading.value = true
@@ -114,8 +112,7 @@ async function save() {
     ElMessage.warning('请填写机构名称')
     return
   }
-  saving.value = true
-  try {
+  const res = await runSave(async () => {
     if (editId.value) {
       await updateOrg(editId.value, {
         name: form.name, code: form.code || undefined, leader: form.leader || undefined,
@@ -129,13 +126,10 @@ async function save() {
       })
       ElMessage.success('已创建')
     }
-    formOpen.value = false
-    void reload()
-  } catch (e) {
-    notifyApiError(e, '保存失败')
-  } finally {
-    saving.value = false
-  }
+  })
+  if (!res.ok) return
+  formOpen.value = false
+  void reload()
 }
 
 async function onDelete(row: OrgNode) {
@@ -144,13 +138,10 @@ async function onDelete(row: OrgNode) {
     danger: true,
   })
   if (!ok) return
-  try {
-    await deleteOrg(row.id)
-    ElMessage.success('已删除（软删）')
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runDelete(() => deleteOrg(row.id))
+  if (!res.ok) return
+  ElMessage.success('已删除（软删）')
+  void reload()
 }
 
 onMounted(reload)

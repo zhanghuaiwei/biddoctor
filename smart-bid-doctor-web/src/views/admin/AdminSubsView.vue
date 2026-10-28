@@ -1,16 +1,11 @@
 <!-- 订阅管理（P2 商业化）：计划配置（code=sub_* 即 orders.sku）+ 用户订阅实例 -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <p class="page-eyebrow">Commerce</p>
-        <h1 class="page-title">订阅管理</h1>
-        <p class="page-desc">售卖计划配置与用户订阅实例；核销走订单统一入口（订阅激活+按期发放）</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader eyebrow="Commerce" title="订阅管理" desc="售卖计划配置与用户订阅实例；核销走订单统一入口（订阅激活+按期发放）">
+      <template #actions>
         <el-button type="primary" @click="planOpen = true">新建计划</el-button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <el-card class="lift-card cascade-in">
       <template #header>
@@ -33,9 +28,11 @@
         <el-table-column prop="compare_quota" label="每期次数" width="100" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
-              {{ row.status === 'active' ? '在售' : '停售' }}
-            </el-tag>
+            <EnumTag
+              :value="row.status"
+              :labels="{ active: '在售', retired: '停售' }"
+              :tags="{ active: 'success', retired: 'info' }"
+            />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="110" fixed="right">
@@ -66,9 +63,7 @@
         <el-table-column prop="plan_code" label="计划" width="120" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="SUBSCRIPTION_STATUS_TAGS[row.status as SubscriptionStatus]" size="small">
-              {{ SUBSCRIPTION_STATUS_LABELS[row.status as SubscriptionStatus] ?? row.status }}
-            </el-tag>
+            <EnumTag :value="row.status" :labels="SUBSCRIPTION_STATUS_LABELS" :tags="SUBSCRIPTION_STATUS_TAGS" />
           </template>
         </el-table-column>
         <el-table-column label="本期起" width="120">
@@ -81,9 +76,7 @@
           <template #default="{ row }">{{ row.auto_renew ? '是' : '否' }}</template>
         </el-table-column>
       </el-table>
-      <div class="pager">
-        <el-pagination layout="prev, pager, next" :total="subTotal" :page-size="20" :current-page="subPage" @current-change="onSubPage" />
-      </div>
+      <ListPager :total="subTotal" :page="subPage" :page-size="20" @change="onSubPage" />
     </el-card>
 
     <OverlayPanel v-model="planOpen" title="新建订阅计划" content-size="sm">
@@ -107,10 +100,13 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { createPlan as createPlanApi, listPlans, listSubscriptions, updatePlan } from '@/api/admin'
 import { notifyApiError } from '@/api/client'
-import { SUBSCRIPTION_STATUS_LABELS, SUBSCRIPTION_STATUS_TAGS } from '@/constants/enums'
-import type { SubscriptionStatus } from '@/constants/enums'
-import type { PlanOut, SubscriptionOut } from '@/types'
+import EnumTag from '@/components/EnumTag.vue'
+import ListPager from '@/components/ListPager.vue'
 import OverlayPanel from '@/components/OverlayPanel.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
+import { SUBSCRIPTION_STATUS_LABELS, SUBSCRIPTION_STATUS_TAGS } from '@/constants/enums'
+import type { PlanOut, SubscriptionOut } from '@/types'
 import { formatDate } from '@/utils/format'
 
 const plans = ref<PlanOut[]>([])
@@ -120,10 +116,12 @@ const subPage = ref(1)
 const subStatus = ref('')
 const loading = ref(false)
 const subsLoading = ref(false)
-const saving = ref(false)
 const planOpen = ref(false)
 
 const plan = reactive({ code: '', name: '', price_cny: '', period_months: 1, compare_quota: 20 })
+
+const { pending: saving, run: runSave } = useApiAction('创建失败')
+const { run: runPlan } = useApiAction()
 
 async function reload() {
   loading.value = true
@@ -164,43 +162,26 @@ async function createPlan() {
     ElMessage.warning('请完整填写编码/名称/价格')
     return
   }
-  saving.value = true
-  try {
-    await createPlanApi({ ...plan, price_cny: plan.price_cny })
-    ElMessage.success('计划已创建（在售）')
-    planOpen.value = false
-    plan.code = ''
-    plan.name = ''
-    plan.price_cny = ''
-    void reload()
-  } catch (e) {
-    notifyApiError(e, '创建失败')
-  } finally {
-    saving.value = false
-  }
+  const res = await runSave(() => createPlanApi({ ...plan, price_cny: plan.price_cny }))
+  if (!res.ok) return
+  ElMessage.success('计划已创建（在售）')
+  planOpen.value = false
+  plan.code = ''
+  plan.name = ''
+  plan.price_cny = ''
+  void reload()
 }
 
 async function togglePlan(row: PlanOut) {
-  try {
-    await updatePlan(row.id, { status: row.status === 'active' ? 'retired' : 'active' })
-    ElMessage.success(row.status === 'active' ? '已停售' : '已上架')
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runPlan(() => updatePlan(row.id, { status: row.status === 'active' ? 'retired' : 'active' }))
+  if (!res.ok) return
+  ElMessage.success(row.status === 'active' ? '已停售' : '已上架')
+  void reload()
 }
 
 onMounted(reload)
 </script>
 
 <style scoped lang="less">
-.mt {
-  margin-top: 16px;
-}
-
-.pager {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
+// .mt/.pager 取全局共享类
 </style>

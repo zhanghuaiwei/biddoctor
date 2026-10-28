@@ -1,16 +1,11 @@
 <!-- 附件库（05 §7）：全模块附件列表 + 软删 + 下载（删除写 attachment_delete 审计） -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <p class="page-eyebrow">Operations</p>
-        <h1 class="page-title">附件库</h1>
-        <p class="page-desc">支付凭证/申诉/导入等通用附件；标书原件在项目内独立管理</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader eyebrow="Operations" title="附件库" desc="支付凭证/申诉/导入等通用附件；标书原件在项目内独立管理">
+      <template #actions>
         <el-button :loading="loading" @click="reload">刷新</el-button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <el-card class="lift-card cascade-in">
       <template #header>
@@ -48,71 +43,44 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager">
-        <el-pagination
-          layout="prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="page"
-          @current-change="onPage"
-        />
-      </div>
+      <ListPager :total="total" :page="page" :page-size="pageSize" @change="onPage" />
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 
 import { deleteAdminAttachment, downloadAdminAttachment, listAdminAttachments } from '@/api/admin'
-import { notifyApiError } from '@/api/client'
+import ListPager from '@/components/ListPager.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
+import { usePagedList } from '@/composables/usePagedList'
 import { ATTACHMENT_MODULE_LABELS } from '@/constants/enums'
 import type { AttachmentModule } from '@/constants/enums'
 import type { AttachmentOut } from '@/types'
 import { confirmAction } from '@/utils/confirm'
+import { saveBlob } from '@/utils/download'
 import { formatBytes, formatDateTime } from '@/utils/format'
 
-const rows = ref<AttachmentOut[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = 20
 const module = ref('')
-const loading = ref(false)
 
-async function reload() {
-  loading.value = true
-  try {
-    const data = await listAdminAttachments({
+const { items: rows, total, page, pageSize, loading, reload, onPage } = usePagedList<AttachmentOut>(
+  ({ limit, offset }) =>
+    listAdminAttachments({
       module: module.value || undefined,
-      offset: (page.value - 1) * pageSize,
-      limit: pageSize,
-    })
-    rows.value = data.items
-    total.value = data.total
-  } catch (e) {
-    notifyApiError(e, '附件加载失败')
-  } finally {
-    loading.value = false
-  }
-}
+      offset,
+      limit,
+    }),
+  { errorText: '附件加载失败' },
+)
 
-function onPage(p: number) {
-  page.value = p
-  void reload()
-}
+const { run: runAttachment } = useApiAction()
 
 async function onDownload(row: AttachmentOut) {
-  try {
-    const blob = await downloadAdminAttachment(row.id)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = row.orig_name
-    link.click()
-    URL.revokeObjectURL(url)
-  } catch (e) {
-    notifyApiError(e, '下载失败')
-  }
+  const res = await runAttachment(() => downloadAdminAttachment(row.id))
+  if (!res.ok) return
+  saveBlob(res.data, row.orig_name)
 }
 
 async function onDelete(row: AttachmentOut) {
@@ -121,22 +89,13 @@ async function onDelete(row: AttachmentOut) {
     danger: true,
   })
   if (!ok) return
-  try {
-    await deleteAdminAttachment(row.id)
-    ElMessage.success('已删除（软删）')
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runAttachment(() => deleteAdminAttachment(row.id))
+  if (!res.ok) return
+  ElMessage.success('已删除（软删）')
+  void reload()
 }
-
-onMounted(reload)
 </script>
 
 <style scoped lang="less">
-.pager {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
+// .pager 取全局共享类
 </style>

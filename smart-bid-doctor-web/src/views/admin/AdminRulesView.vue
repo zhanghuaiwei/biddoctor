@@ -1,16 +1,11 @@
 <!-- 规则库（P2 行业包）：版本管理 draft→active→retired + 条目维护（注入引擎预筛/复核） -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <p class="page-eyebrow">Rules</p>
-        <h1 class="page-title">规则库</h1>
-        <p class="page-desc">行业包规则版本（law_version 法版本追踪），M2 引擎接入时读取</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader eyebrow="Rules" title="规则库" desc="行业包规则版本（law_version 法版本追踪），M2 引擎接入时读取">
+      <template #actions>
         <el-button type="primary" @click="createOpen = true">新建规则库</el-button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <el-row :gutter="16" class="cascade-in">
       <el-col :xs="24" :md="10">
@@ -36,12 +31,11 @@
             <el-table-column prop="version" label="版本" width="70" />
             <el-table-column label="状态" width="90">
               <template #default="{ row }">
-                <el-tag
-                  :type="row.status === 'active' ? 'success' : row.status === 'draft' ? 'info' : 'warning'"
-                  size="small"
-                >
-                  {{ row.status }}
-                </el-tag>
+                <EnumTag
+                  :value="row.status"
+                  :labels="{ active: '生效', draft: '草稿', retired: '已退役' }"
+                  :tags="{ active: 'success', draft: 'info', retired: 'warning' }"
+                />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="150" fixed="right">
@@ -143,21 +137,27 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { activateRuleSet, addRuleItem, createRuleSet, deleteRuleItem, listRuleItems, listRuleSets, retireRuleSet } from '@/api/admin'
 import { notifyApiError } from '@/api/client'
+import EnumTag from '@/components/EnumTag.vue'
+import OverlayPanel from '@/components/OverlayPanel.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
 import type { RuleItemOut, RuleSetOut } from '@/types'
 import { confirmAction } from '@/utils/confirm'
-import OverlayPanel from '@/components/OverlayPanel.vue'
 
 const sets = ref<RuleSetOut[]>([])
 const items = ref<RuleItemOut[]>([])
 const current = ref<RuleSetOut | null>(null)
 const loading = ref(false)
 const itemsLoading = ref(false)
-const saving = ref(false)
 const createOpen = ref(false)
 const itemOpen = ref(false)
 
 const form = reactive({ industry: 'general', law_version: '', notes: '' })
 const item = reactive({ category: 'qualification', kind: 'keyword', pattern: '', action: 'hint', description: '' })
+
+// saving 由 createSet/addItem 共用（两个弹层不同时打开）
+const { pending: saving, run: runSave } = useApiAction('创建失败')
+const { run: runRule } = useApiAction()
 
 async function reload() {
   loading.value = true
@@ -188,40 +188,30 @@ async function createSet() {
     ElMessage.warning('请填写法版本')
     return
   }
-  saving.value = true
-  try {
-    await createRuleSet({ industry: form.industry, law_version: form.law_version, notes: form.notes || undefined })
-    ElMessage.success('规则库已创建（draft）')
-    createOpen.value = false
-    form.law_version = ''
-    form.notes = ''
-    void reload()
-  } catch (e) {
-    notifyApiError(e, '创建失败')
-  } finally {
-    saving.value = false
-  }
+  const res = await runSave(() =>
+    createRuleSet({ industry: form.industry, law_version: form.law_version, notes: form.notes || undefined }),
+  )
+  if (!res.ok) return
+  ElMessage.success('规则库已创建（draft）')
+  createOpen.value = false
+  form.law_version = ''
+  form.notes = ''
+  void reload()
 }
 
 async function onActivate(row: RuleSetOut) {
-  try {
-    await activateRuleSet(row.id)
-    ElMessage.success('已激活（同法版本旧 active 自动退役）')
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runRule(() => activateRuleSet(row.id))
+  if (!res.ok) return
+  ElMessage.success('已激活（同法版本旧 active 自动退役）')
+  void reload()
 }
 
 async function onRetire(row: RuleSetOut) {
   const ok = await confirmAction(`退役规则库 v${row.version}？`, { title: '退役', danger: true })
   if (!ok) return
-  try {
-    await retireRuleSet(row.id)
-    void reload()
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runRule(() => retireRuleSet(row.id))
+  if (!res.ok) return
+  void reload()
 }
 
 async function addItem() {
@@ -229,28 +219,19 @@ async function addItem() {
     ElMessage.warning('请填写表达式')
     return
   }
-  saving.value = true
-  try {
-    await addRuleItem(current.value.id, { ...item })
-    ElMessage.success('条目已创建')
-    itemOpen.value = false
-    void onPick(current.value)
-  } catch (e) {
-    notifyApiError(e, '创建失败')
-  } finally {
-    saving.value = false
-  }
+  const res = await runSave(() => addRuleItem(current.value?.id ?? 0, { ...item }))
+  if (!res.ok) return
+  ElMessage.success('条目已创建')
+  itemOpen.value = false
+  void onPick(current.value)
 }
 
 async function onDeleteItem(row: RuleItemOut) {
   const ok = await confirmAction('删除该规则条目？', { title: '删除', danger: true })
   if (!ok) return
-  try {
-    await deleteRuleItem(row.id)
-    void onPick(current.value)
-  } catch (e) {
-    notifyApiError(e)
-  }
+  const res = await runRule(() => deleteRuleItem(row.id))
+  if (!res.ok) return
+  void onPick(current.value)
 }
 
 onMounted(reload)
