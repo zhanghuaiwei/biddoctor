@@ -173,11 +173,61 @@ async function login() {
 <style scoped lang="less">
 .auth-layout {
   display: flex;
-  min-height: 100vh;
+  // 登录页固定整屏高、不产生页面滚动条；内容超高时由 .auth-main 内部滚动（滚动条隐藏）
+  height: 100vh;
+  height: 100dvh; // 移动端浏览器地址栏收放时取真实可视高度
+  overflow: hidden;
   background: @c-bg;
 
   @media (max-width: @bp-lg) {
     flex-direction: column;
+  }
+}
+
+// ---- 表单位置（登录页布局偏好，独立于工作台布局）----
+// theme store 把偏好写回根节点 data-auth-form-position（见 stores/theme.ts）；
+// 仅桌面生效：窄屏品牌区本就是顶部横幅，统一版式不参与位置切换。
+@media (min-width: (@bp-lg + 1px)) {
+  :global(html[data-auth-form-position='left'] .auth-layout) {
+    flex-direction: row-reverse;
+  }
+
+  // 居中：品牌区全屏铺底（含网格纹理与光晕），表单卡片浮在其上居中
+  :global(html[data-auth-form-position='center'] .auth-layout) {
+    position: relative;
+    display: block;
+  }
+
+  :global(html[data-auth-form-position='center'] .auth-layout .brand-panel) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    flex: none;
+  }
+
+  :global(html[data-auth-form-position='center'] .auth-layout .auth-main) {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    height: 100dvh;
+    background: transparent;
+  }
+
+  // 品牌内容收在左侧"竖排栏"，宽度按卡片左沿反算，保证任何桌面宽度下都不与浮层卡片重叠；
+  // 浮层场景只保留 logo + slogan，卖点列表让位给卡片，避免视觉焦点打架。
+  :global(html[data-auth-form-position='center'] .auth-layout .brand-inner) {
+    max-width: calc(50vw - 290px);
+  }
+
+  :global(html[data-auth-form-position='center'] .auth-layout .brand-points) {
+    display: none;
+  }
+
+  // 浮层场景品牌栏变窄，slogan 随视口缩放，避免在 993~1200px 区间被挤成细条
+  :global(html[data-auth-form-position='center'] .auth-layout .brand-slogan) {
+    margin: 22px 0 0;
+    font-size: clamp(18px, 2.1vw, 30px);
   }
 }
 
@@ -349,14 +399,22 @@ async function login() {
 
 // ---- 表单区 ----
 .auth-main {
+  box-sizing: border-box;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 48px 32px;
+  // 视口过矮时表单区内部滚动，滚动条隐藏（页面级始终无滚动条）
+  overflow-y: auto;
+  scrollbar-width: none;
   background:
     radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--app-accent) 7%, transparent) 0%, transparent 42%),
     @c-bg;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   @media (max-width: @bp-lg) {
     align-items: flex-start;

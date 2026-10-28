@@ -82,6 +82,16 @@ export const DENSITY_LABELS: Record<Density, string> = {
   comfortable: '宽松',
 }
 
+// ---- 登录/注册页布局偏好（与工作台布局相互独立）----
+export const AUTH_FORM_POSITIONS = ['left', 'center', 'right'] as const
+export type AuthFormPosition = (typeof AUTH_FORM_POSITIONS)[number]
+
+export const AUTH_FORM_POSITION_LABELS: Record<AuthFormPosition, string> = {
+  left: '居左',
+  center: '居中',
+  right: '居右',
+}
+
 // ---- 交互偏好默认值 ----
 export const DEFAULT_INTERACTION = {
   overlayMode: 'auto' as OverlayMode,
@@ -95,4 +105,9 @@ export const DEFAULT_LAYOUT = {
   navLayout: 'side' as NavLayout,
   pageWidth: 'standard' as PageWidth,
   density: 'standard' as Density,
+}
+
+// ---- 登录页布局默认值（表单默认居右，品牌分屏在左）----
+export const DEFAULT_AUTH_LAYOUT = {
+  authFormPosition: 'right' as AuthFormPosition,
 }

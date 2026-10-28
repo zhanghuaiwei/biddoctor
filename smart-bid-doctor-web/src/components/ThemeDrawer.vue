@@ -15,7 +15,7 @@
       <div>
         <h2 class="drawer-title">外观设置</h2>
         <p class="drawer-desc">
-          {{ isLogin ? '仅调整登录页外观，偏好保存在本机浏览器' : '偏好保存在本机浏览器，修改后立即生效' }}
+          {{ isLogin ? '仅调整登录页外观与布局，偏好保存在本机浏览器' : '偏好保存在本机浏览器，修改后立即生效' }}
         </p>
       </div>
       <el-button text circle aria-label="关闭外观设置" @click="theme.drawerOpen = false">
@@ -79,50 +79,94 @@
       </p>
     </section>
 
+    <section v-if="isLogin" class="section">
+      <h3 class="section-title">登录页布局</h3>
+      <div class="field">
+        <span class="field-label">表单位置</span>
+        <div class="viz-grid">
+          <button
+            v-for="p in AUTH_FORM_POSITIONS"
+            :key="p"
+            type="button"
+            class="viz-card"
+            :class="{ 'is-active': theme.authFormPosition === p }"
+            @click="theme.setAuthFormPosition(p)"
+          >
+            <span class="viz viz-split" :class="`viz-split--${p}`" aria-hidden="true">
+              <i class="viz-brand" />
+              <i class="viz-form" />
+            </span>
+            <span>{{ AUTH_FORM_POSITION_LABELS[p] }}</span>
+          </button>
+        </div>
+        <p class="field-hint">居右为默认分屏（品牌区在左）；居中时品牌区全屏铺底、表单浮在其上；窄屏统一为品牌横幅在上</p>
+      </div>
+    </section>
+
     <section v-if="!isLogin" class="section">
       <h3 class="section-title">布局配置</h3>
       <div class="field">
         <span class="field-label">导航布局</span>
-        <div class="seg">
+        <div class="viz-grid">
           <button
             v-for="n in NAV_LAYOUTS"
             :key="n"
             type="button"
-            class="seg-btn"
+            class="viz-card"
             :class="{ 'is-active': theme.navLayout === n }"
             @click="theme.setNavLayout(n)"
           >
-            {{ NAV_LAYOUT_LABELS[n] }}
+            <span class="viz viz-nav" :class="`viz-nav--${n}`" aria-hidden="true">
+              <i class="viz-bar" />
+              <span class="viz-lines">
+                <i />
+                <i />
+                <i />
+              </span>
+            </span>
+            <span>{{ NAV_LAYOUT_LABELS[n] }}</span>
           </button>
         </div>
       </div>
       <div class="field">
         <span class="field-label">内容宽度</span>
-        <div class="seg">
+        <div class="viz-grid">
           <button
             v-for="w in PAGE_WIDTHS"
             :key="w"
             type="button"
-            class="seg-btn"
+            class="viz-card"
             :class="{ 'is-active': theme.pageWidth === w }"
             @click="theme.setPageWidth(w)"
           >
-            {{ PAGE_WIDTH_LABELS[w] }}
+            <span class="viz viz-width" :class="`viz-width--${w}`" aria-hidden="true">
+              <i class="viz-page">
+                <i />
+                <i />
+                <i />
+              </i>
+            </span>
+            <span>{{ PAGE_WIDTH_LABELS[w] }}</span>
           </button>
         </div>
       </div>
       <div class="field">
         <span class="field-label">界面密度</span>
-        <div class="seg">
+        <div class="viz-grid">
           <button
             v-for="d in DENSITIES"
             :key="d"
             type="button"
-            class="seg-btn"
+            class="viz-card"
             :class="{ 'is-active': theme.density === d }"
             @click="theme.setDensity(d)"
           >
-            {{ DENSITY_LABELS[d] }}
+            <span class="viz viz-density" :class="`viz-density--${d}`" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span>{{ DENSITY_LABELS[d] }}</span>
           </button>
         </div>
       </div>
@@ -173,7 +217,7 @@
 
     <footer class="drawer-foot">
       <el-button class="reset-btn" @click="theme.reset()">
-        {{ isLogin ? '恢复默认外观' : '恢复默认（外观 + 布局 + 交互）' }}
+        {{ isLogin ? '恢复默认外观与布局' : '恢复默认（外观 + 布局 + 交互）' }}
       </el-button>
       <p class="foot-note">当前：{{ modeLabel }}{{ activePreset ? '' : ' · 自定义主题色' }}</p>
     </footer>
@@ -186,6 +230,8 @@ import { useRoute } from 'vue-router'
 
 import {
   ACCENT_PRESETS,
+  AUTH_FORM_POSITION_LABELS,
+  AUTH_FORM_POSITIONS,
   DENSITIES,
   DENSITY_LABELS,
   DRAWER_WIDTHS,
@@ -450,6 +496,209 @@ const MODE_ICONS: Record<ThemeMode, string> = {
     color: var(--app-accent);
     font-weight: 600;
     box-shadow: @shadow-xs;
+  }
+}
+
+// ---- 可视化布局选项（表单位置 / 导航 / 宽度 / 密度）----
+// 以缩略图直观看效果，替代表单式分段控件；缩略图由纯 CSS 方块拼出，不引入图标或图片资源。
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.viz-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 6px 10px;
+  border: 1px solid @c-line;
+  border-radius: @radius;
+  background: @c-surface;
+  font: inherit;
+  font-size: @fs-xs;
+  color: @c-text-sub;
+  cursor: pointer;
+  transition:
+    border-color @dur-fast @ease-out,
+    background-color @dur-fast @ease-out,
+    color @dur-fast @ease-out;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--app-accent) 45%, var(--app-line));
+  }
+
+  &.is-active {
+    border-color: var(--app-accent);
+    background: @c-accent-soft;
+    color: var(--app-accent);
+    font-weight: 600;
+  }
+}
+
+// 缩略图外框：统一底色/内边距，各控件只换内部拼块
+.viz {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  height: 38px;
+  padding: 4px;
+  gap: 3px;
+  border: 1px solid @c-line-soft;
+  border-radius: @radius-sm;
+  background-color: @c-bg;
+  // 细网格底纹：版式蓝图感，区域块之间的留白处透出格线（线色取主题描边色并降低不透明度）
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--app-line) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--app-line) 42%, transparent) 1px, transparent 1px);
+  background-size: 9px 9px;
+  pointer-events: none;
+
+  i {
+    display: block;
+    border-radius: 2px;
+  }
+}
+
+// -- 表单位置：品牌块 + 表单块 --
+.viz-brand {
+  flex: 0 0 38%;
+  background: color-mix(in srgb, var(--app-accent) 30%, transparent);
+}
+
+.viz-form {
+  flex: 1;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 35%, transparent);
+  background: @c-surface;
+}
+
+.viz-split--left {
+  flex-direction: row-reverse;
+}
+
+.viz-split--center {
+  position: relative;
+
+  .viz-brand {
+    flex: 1;
+  }
+
+  // 居中：品牌全屏铺底，表单块浮在正中
+  .viz-form {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 42%;
+    height: 62%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+// -- 导航布局：侧边栏竖条 / 顶部横条 + 内容行 --
+.viz-nav {
+  align-items: stretch;
+}
+
+.viz-bar {
+  flex: none;
+  background: color-mix(in srgb, var(--app-accent) 55%, transparent);
+}
+
+.viz-nav--side {
+  flex-direction: row;
+
+  .viz-bar {
+    width: 22%;
+  }
+}
+
+.viz-nav--top {
+  flex-direction: column;
+
+  .viz-bar {
+    width: auto;
+    height: 24%;
+  }
+}
+
+.viz-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+
+  i {
+    height: 3px;
+    background: @c-line;
+  }
+}
+
+// -- 内容宽度：内容块居中收窄 / 撑满 --
+.viz-width {
+  align-items: stretch;
+  justify-content: center;
+}
+
+.viz i.viz-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 3px;
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+
+  i {
+    height: 3px;
+    background: color-mix(in srgb, var(--app-accent) 45%, transparent);
+  }
+}
+
+.viz-width--standard .viz-page {
+  flex: 0 0 62%;
+}
+
+.viz-width--wide .viz-page {
+  flex: 1;
+}
+
+// -- 界面密度：行高与间距随档位变化 --
+.viz-density {
+  box-sizing: border-box;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px;
+
+  i {
+    width: 100%;
+    background: @c-line;
+  }
+}
+
+.viz-density--compact {
+  gap: 3px;
+
+  i {
+    height: 2px;
+  }
+}
+
+.viz-density--standard {
+  gap: 4px;
+
+  i {
+    height: 4px;
+  }
+}
+
+.viz-density--comfortable {
+  gap: 5px;
+
+  i {
+    height: 6px;
   }
 }
 

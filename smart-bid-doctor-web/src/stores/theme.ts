@@ -11,9 +11,11 @@ import { defineStore } from 'pinia'
 import {
   ACCENT_PRESETS,
   DEFAULT_ACCENT,
+  DEFAULT_AUTH_LAYOUT,
   DEFAULT_INTERACTION,
   DEFAULT_LAYOUT,
   DRAWER_SIZE_MAP,
+  type AuthFormPosition,
   type Density,
   type DrawerWidth,
   type NavLayout,
@@ -34,6 +36,7 @@ interface ThemePrefs {
   navLayout: NavLayout
   pageWidth: PageWidth
   density: Density
+  authFormPosition: AuthFormPosition
 }
 
 const VALID_HEX = /^#[0-9a-fA-F]{6}$/
@@ -45,6 +48,7 @@ function loadPrefs(): ThemePrefs {
     accent: DEFAULT_ACCENT,
     ...DEFAULT_INTERACTION,
     ...DEFAULT_LAYOUT,
+    ...DEFAULT_AUTH_LAYOUT,
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.theme)
@@ -59,6 +63,10 @@ function loadPrefs(): ThemePrefs {
     const pageWidth: PageWidth = parsed.pageWidth === 'wide' ? 'wide' : 'standard'
     const density: Density =
       parsed.density === 'compact' || parsed.density === 'comfortable' ? parsed.density : 'standard'
+    const authFormPosition: AuthFormPosition =
+      parsed.authFormPosition === 'left' || parsed.authFormPosition === 'center'
+        ? parsed.authFormPosition
+        : DEFAULT_AUTH_LAYOUT.authFormPosition
     return {
       mode,
       accent: typeof parsed.accent === 'string' && VALID_HEX.test(parsed.accent) ? parsed.accent : DEFAULT_ACCENT,
@@ -67,6 +75,7 @@ function loadPrefs(): ThemePrefs {
       navLayout,
       pageWidth,
       density,
+      authFormPosition,
       closeOnClickModal:
         typeof parsed.closeOnClickModal === 'boolean' ? parsed.closeOnClickModal : DEFAULT_INTERACTION.closeOnClickModal,
       closeOnPressEscape:
@@ -90,6 +99,7 @@ export const useThemeStore = defineStore('theme', () => {
   const navLayout = ref<NavLayout>(prefs.navLayout)
   const pageWidth = ref<PageWidth>(prefs.pageWidth)
   const density = ref<Density>(prefs.density)
+  const authFormPosition = ref<AuthFormPosition>(prefs.authFormPosition)
   const drawerOpen = ref(false)
 
   // 跟随系统：监听配色偏好变化，system 模式下实时切换
@@ -114,6 +124,8 @@ export const useThemeStore = defineStore('theme', () => {
     root.dataset.navLayout = navLayout.value
     root.dataset.pageWidth = pageWidth.value
     root.dataset.density = density.value
+    // 登录/注册页布局独立：表单位置由 LoginView 的 :global 选择器消费（仅登录页生效）
+    root.dataset.authFormPosition = authFormPosition.value
 
     const set = (name: string, value: string) => root.style.setProperty(name, value)
     set('--app-accent', accent.value)
@@ -140,12 +152,25 @@ export const useThemeStore = defineStore('theme', () => {
       navLayout: navLayout.value,
       pageWidth: pageWidth.value,
       density: density.value,
+      authFormPosition: authFormPosition.value,
     }
     localStorage.setItem(STORAGE_KEYS.theme, JSON.stringify(payload))
   }
 
   watch(
-    [mode, accent, overlayMode, drawerWidth, closeOnClickModal, closeOnPressEscape, navLayout, pageWidth, density, isDark],
+    [
+      mode,
+      accent,
+      overlayMode,
+      drawerWidth,
+      closeOnClickModal,
+      closeOnPressEscape,
+      navLayout,
+      pageWidth,
+      density,
+      authFormPosition,
+      isDark,
+    ],
     () => {
       apply()
       save()
@@ -181,6 +206,10 @@ export const useThemeStore = defineStore('theme', () => {
     density.value = next
   }
 
+  function setAuthFormPosition(next: AuthFormPosition) {
+    authFormPosition.value = next
+  }
+
   /** 恢复默认：亮色 + 首个品牌强调色 + 默认交互与布局偏好 */
   function reset() {
     mode.value = 'light'
@@ -192,6 +221,7 @@ export const useThemeStore = defineStore('theme', () => {
     navLayout.value = DEFAULT_LAYOUT.navLayout
     pageWidth.value = DEFAULT_LAYOUT.pageWidth
     density.value = DEFAULT_LAYOUT.density
+    authFormPosition.value = DEFAULT_AUTH_LAYOUT.authFormPosition
   }
 
   function openDrawer() {
@@ -215,6 +245,7 @@ export const useThemeStore = defineStore('theme', () => {
     navLayout,
     pageWidth,
     density,
+    authFormPosition,
     setMode,
     setAccent,
     setOverlayMode,
@@ -222,6 +253,7 @@ export const useThemeStore = defineStore('theme', () => {
     setNavLayout,
     setPageWidth,
     setDensity,
+    setAuthFormPosition,
     reset,
     openDrawer,
   }
