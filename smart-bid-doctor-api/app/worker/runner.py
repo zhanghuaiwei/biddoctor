@@ -128,6 +128,9 @@ def main_loop(poll: float = 3.0) -> None:
         try:
             enqueue_daily_purge()
             recover_stale()
+            from app.worker import jobs  # 内置 sys_job 调度（15s 节流，异常自吞）
+
+            jobs.tick()
             with SessionLocal() as db:
                 row = db.execute(CLAIM_SQL).mappings().first()
             if row is None:

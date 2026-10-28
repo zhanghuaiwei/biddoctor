@@ -54,6 +54,52 @@ def create_app() -> FastAPI:
         response.headers["X-Request-ID"] = rid
         return response
 
+    @app_.middleware("http")
+    async def admin_oper_log_middleware(request: Request, call_next):
+        """管理端请求级操作日志（sys_oper_log，05 §5.1）：仅 /api/admin/*。
+
+        只记 method/path/query/status/cost（不记请求体——防凭据类字段入日志）；
+        user_id 从 JWT sub 解析（验签失败按匿名记，不阻断请求）。
+        """
+        import time as _time
+
+        if not request.url.path.startswith("/api/admin"):
+            return await call_next(request)
+        started = _time.perf_counter()
+        response = await call_next(request)
+        try:
+            from app.core.db import SessionLocal
+            from app.core.security import decode_token
+
+            user_id = None
+            auth_header = request.headers.get("Authorization") or ""
+            if auth_header.startswith("Bearer "):
+                try:
+                    user_id = int(decode_token(auth_header[7:])["sub"])
+                except Exception:
+                    user_id = None
+            segments = [seg for seg in request.url.path.split("/") if seg]
+            # /api/admin/<域>/<...> → module=admin_<域>，action 取域+末段
+            domain = segments[2] if len(segments) > 2 else "root"
+            action = f"{domain}:{segments[-1]}" if len(segments) > 3 else domain
+            db = SessionLocal()
+            try:
+                from app.services import log_svc
+
+                log_svc.write_oper_log(
+                    db, user_id=user_id, module=f"admin_{domain}"[:32],
+                    action=action[:48], method=request.method,
+                    path=request.url.path, status_code=response.status_code,
+                    cost_ms=int((_time.perf_counter() - started) * 1000),
+                    query=str(request.url.query) or None,
+                    ip=request.client.host if request.client else None,
+                )
+            finally:
+                db.close()
+        except Exception:  # 日志失败不阻断管理请求
+            pass
+        return response
+
     @app_.exception_handler(AppError)
     async def app_error_handler(_: Request, exc: AppError):
         return JSONResponse(

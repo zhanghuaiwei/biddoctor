@@ -183,4 +183,152 @@ export const ORDER_STATUS_TAGS: Record<OrderStatus, TagType> = {
 
 // ---- 上传约束（与后端 FJ_MAX_UPLOAD_MB / FJ_MAX_PAGES 同步；后端为最终校验方）----
 export const MAX_UPLOAD_MB = 100
+/** 附件上传上限（05 §7：单文件 ≤20MB，与标书 100MB 分开） */
+export const MAX_ATTACHMENT_MB = 20
 export const MAX_PAGES = 500
+
+// ============================================================================
+// 平台化域枚举（05 文档 v2.0）：sys_* / 附件 / 法务 / AI 治理 / 订阅
+// ============================================================================
+
+// ---- 通用启停状态 ----
+export const COMMON_STATUSES = ['active', 'disabled'] as const
+export type CommonStatus = (typeof COMMON_STATUSES)[number]
+
+export const COMMON_STATUS_LABELS: Record<CommonStatus, string> = {
+  active: '启用',
+  disabled: '停用',
+}
+
+export const COMMON_STATUS_TAGS: Record<CommonStatus, TagType> = {
+  active: 'success',
+  disabled: 'info',
+}
+
+// ---- 菜单节点类型 ----
+export const MENU_TYPES = ['dir', 'menu', 'button'] as const
+export type MenuType = (typeof MENU_TYPES)[number]
+
+export const MENU_TYPE_LABELS: Record<MenuType, string> = {
+  dir: '目录',
+  menu: '页面',
+  button: '按钮权限点',
+}
+
+// ---- 公告 ----
+export const NOTICE_TYPES = ['notice', 'announcement'] as const
+export type NoticeType = (typeof NOTICE_TYPES)[number]
+
+export const NOTICE_TYPE_LABELS: Record<NoticeType, string> = {
+  notice: '通知',
+  announcement: '公告',
+}
+
+export const NOTICE_LEVELS = ['info', 'warn', 'critical'] as const
+export type NoticeLevel = (typeof NOTICE_LEVELS)[number]
+
+export const NOTICE_LEVEL_LABELS: Record<NoticeLevel, string> = {
+  info: '常规',
+  warn: '警告',
+  critical: '紧急',
+}
+
+export const NOTICE_LEVEL_TAGS: Record<NoticeLevel, TagType> = {
+  info: 'info',
+  warn: 'warning',
+  critical: 'danger',
+}
+
+export const NOTICE_STATUSES = ['draft', 'published', 'offline'] as const
+export type NoticeStatus = (typeof NOTICE_STATUSES)[number]
+
+export const NOTICE_STATUS_LABELS: Record<NoticeStatus, string> = {
+  draft: '草稿',
+  published: '已发布',
+  offline: '已下线',
+}
+
+export const NOTICE_STATUS_TAGS: Record<NoticeStatus, TagType> = {
+  draft: 'info',
+  published: 'success',
+  offline: 'info',
+}
+
+// ---- 登录日志 ----
+export const LOGIN_RESULTS = ['success', 'fail'] as const
+export type LoginResult = (typeof LOGIN_RESULTS)[number]
+
+export const LOGIN_RESULT_LABELS: Record<LoginResult, string> = {
+  success: '成功',
+  fail: '失败',
+}
+
+export const LOGIN_RESULT_TAGS: Record<LoginResult, TagType> = {
+  success: 'success',
+  fail: 'danger',
+}
+
+// ---- 法务文档 ----
+export const LEGAL_DOC_TYPES = ['user_agreement', 'privacy_policy', 'disclaimer'] as const
+export type LegalDocType = (typeof LEGAL_DOC_TYPES)[number]
+
+export const LEGAL_DOC_TYPE_LABELS: Record<LegalDocType, string> = {
+  user_agreement: '用户协议',
+  privacy_policy: '隐私政策',
+  disclaimer: '免责声明',
+}
+
+export const LEGAL_STATUSES = ['draft', 'effective', 'retired'] as const
+export type LegalStatus = (typeof LEGAL_STATUSES)[number]
+
+export const LEGAL_STATUS_LABELS: Record<LegalStatus, string> = {
+  draft: '草稿',
+  effective: '生效中',
+  retired: '已退役',
+}
+
+export const LEGAL_STATUS_TAGS: Record<LegalStatus, TagType> = {
+  draft: 'info',
+  effective: 'success',
+  retired: 'info',
+}
+
+// ---- 订阅 ----
+export const SUBSCRIPTION_STATUSES = ['active', 'expired', 'cancelled'] as const
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number]
+
+export const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
+  active: '生效中',
+  expired: '已到期',
+  cancelled: '已取消',
+}
+
+export const SUBSCRIPTION_STATUS_TAGS: Record<SubscriptionStatus, TagType> = {
+  active: 'success',
+  expired: 'info',
+  cancelled: 'info',
+}
+
+// ---- 支付流水（P2 预留） ----
+export const PAYMENT_STATUSES = ['created', 'paying', 'paid', 'failed', 'closed', 'refunded'] as const
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  created: '已创建',
+  paying: '支付中',
+  paid: '已支付',
+  failed: '失败',
+  closed: '已关闭',
+  refunded: '已退款',
+}
+
+// ---- 附件模块（05 §7 白名单）----
+export const ATTACHMENT_MODULES = ['order_voucher', 'appeal', 'import', 'profile'] as const
+export type AttachmentModule = (typeof ATTACHMENT_MODULES)[number]
+
+export const ATTACHMENT_MODULE_LABELS: Record<AttachmentModule, string> = {
+  order_voucher: '支付凭证',
+  appeal: '申诉材料',
+  import: '批量导入',
+  profile: '资料补传',
+}

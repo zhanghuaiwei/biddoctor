@@ -12,6 +12,8 @@ class EmailCodeIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     code: str = Field(min_length=4, max_length=6)
+    # 邀测期注册管控开启（sys_config signup.require_invite）时新注册必填
+    invite_code: str | None = None
 
 
 class UserOut(BaseModel):

@@ -44,6 +44,45 @@ ERROR_CODES: dict[str, int] = {
     "WORKER_TIMEOUT": 0,
     "HANDLER_CRASH": 0,
     "UNKNOWN_TASK_TYPE": 0,
+    # 平台化域（05 文档 v2.0）：系统管理 / 运维 / 附件 / 法务 / AI 治理 / 订阅
+    "ORG_NOT_FOUND": 404,
+    "ORG_HAS_CHILDREN": 409,     # 机构删除：存在子节点
+    "ORG_HAS_USERS": 409,        # 机构删除：仍有在职用户挂靠
+    "ORG_STATE": 409,            # 机构已停用等状态冲突
+    "ROLE_NOT_FOUND": 404,
+    "ROLE_IN_USE": 409,          # 角色删除：仍有用户绑定
+    "ROLE_PROTECTED": 409,       # super_admin 内置角色不可删除/停用
+    "MENU_NOT_FOUND": 404,
+    "MENU_HAS_CHILDREN": 409,
+    "USER_NOT_FOUND": 404,
+    "USER_STATE": 409,           # 用户禁用/恢复状态冲突（如对 admin 自身操作）
+    "CONFIG_NOT_FOUND": 404,
+    "CONFIG_VALUE_INVALID": 400, # value_type 反序列化失败
+    "DICT_NOT_FOUND": 404,
+    "DICT_DATA_CONFLICT": 409,   # 字典取值重复
+    "NOTICE_NOT_FOUND": 404,
+    "NOTICE_STATE": 409,         # 公告状态机非法流转
+    "JOB_NOT_FOUND": 404,
+    "JOB_STATE": 409,            # job 已启用/停用冲突
+    "ALERT_NOT_FOUND": 404,
+    "ALERT_STATE": 409,          # 告警已确认
+    "ATTACHMENT_NOT_FOUND": 404,
+    "ATTACHMENT_TOO_LARGE": 413, # 附件 ≤20MB（与标书 100MB 上限分开）
+    "ATTACHMENT_BAD_TYPE": 400,  # 类型白名单外
+    "LEGAL_NOT_FOUND": 404,
+    "LEGAL_STATE": 409,          # 法务版本状态机非法流转
+    "LEGAL_VERSION_CONFLICT": 409,  # (doc_type, version) 重复
+    "AI_MODEL_NOT_FOUND": 404,
+    "AI_MODEL_CONFLICT": 409,    # model_code 重复
+    "PROMPT_NOT_FOUND": 404,
+    "PROMPT_STATE": 409,         # 激活条件不满足（eval_score 为空等）
+    "PLAN_NOT_FOUND": 404,
+    "PLAN_STATE": 409,
+    "SUBSCRIPTION_NOT_FOUND": 404,
+    "RULESET_NOT_FOUND": 404,
+    "RULESET_STATE": 409,        # 规则库激活条件（同法版本唯一 active）
+    "INVITE_CODE_INVALID": 400,  # 邀请码无效/过期/用尽
+    "AGREEMENT_REQUIRED": 403,   # 法务新版生效后未签署（写操作拦截）
 }
 
 

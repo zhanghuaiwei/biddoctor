@@ -1,4 +1,4 @@
-"""开发库初始化（唯一建表入口）：建扩展 → alembic upgrade head。
+"""开发库初始化（唯一建表入口）：建扩展 → alembic upgrade head → 平台种子。
 生产同样执行本脚本（容器 command），不再单独维护 create_all 路径。
 用法：python scripts/bootstrap.py
 """
@@ -21,7 +21,13 @@ def main() -> None:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
-    print("bootstrap done: extensions + migrations applied (head)")
+    # 平台种子（幂等）：内置角色/菜单/参数/定时任务/法务 v1/AI 模型注册
+    from app.core.db import SessionLocal
+    from app.services import seed_svc
+
+    with SessionLocal() as db:
+        stats = seed_svc.run(db)
+    print(f"bootstrap done: extensions + migrations applied (head), seed={stats}")
 
 
 if __name__ == "__main__":

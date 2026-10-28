@@ -21,6 +21,10 @@ dependencies = [
     # M1 解析引擎启用 OCR 时再安装（体积大，见 02 §2）：
     # "paddlepaddle==3.0.0",
     # "paddleocr==3.0.0",
+    "pymupdf==1.24.14",
+    "pdfplumber==0.11.4",
+    "jinja2==3.1.4",
+    "croniter==3.0.3",
 ]
 
 # 开发/测试依赖（PEP 735 组；生产镜像 uv sync --no-dev 不安装）

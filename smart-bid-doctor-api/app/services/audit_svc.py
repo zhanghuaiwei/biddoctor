@@ -31,6 +31,41 @@ class AuditAction:
     DATA_PURGE = "data_purge"
     ADMIN_CREATED = "admin_created"
     ADMIN_PROMOTED = "admin_promoted"
+    REPORT_GENERATED = "report_generated"  # 清单/对照报告生成完成
+    REPORT_EXPORTED = "report_exported"  # 报告导出（FileResponse）
+    REPORT_ACK = "report_ack"  # 报告免责声明确认（disclaimer_ack）
+    # ── 平台域（05 §5.2 清单）─────────────────────────────────────────────
+    # 系统管理
+    SYS_ORG_UPDATE = "sys_org_update"
+    SYS_ROLE_GRANT = "sys_role_grant"
+    SYS_ROLE_REVOKE = "sys_role_revoke"
+    SYS_MENU_UPDATE = "sys_menu_update"
+    SYS_USER_BAN = "sys_user_ban"
+    SYS_USER_UNBAN = "sys_user_unban"
+    SYS_INVITE_ISSUE = "sys_invite_issue"
+    # 运维管理
+    SYS_CONFIG_UPDATE = "sys_config_update"
+    SYS_DICT_UPDATE = "sys_dict_update"
+    SYS_NOTICE_PUBLISH = "sys_notice_publish"
+    SYS_NOTICE_OFFLINE = "sys_notice_offline"
+    SYS_JOB_TOGGLE = "sys_job_toggle"
+    SYS_JOB_TRIGGER = "sys_job_trigger"
+    # 日志 / 监控
+    LOG_EXPORT = "log_export"  # 查询导出（logs/stats CSV 共用）
+    ALERT_ACK = "alert_ack"
+    # 法务
+    LEGAL_PUBLISH = "legal_publish"
+    LEGAL_SIGNED = "legal_signed"
+    # AI 治理
+    AI_MODEL_UPDATE = "ai_model_update"
+    AI_PROMPT_SWITCH = "ai_prompt_switch"
+    AI_PROMPT_PUBLISH = "ai_prompt_publish"
+    # 附件 / 订阅 / 规则库
+    ATTACHMENT_DELETE = "attachment_delete"
+    ATTACHMENT_UPLOAD = "attachment_upload"
+    SUBSCRIPTION_GRANT = "subscription_grant"  # 订阅订单核销激活
+    RULESET_UPDATE = "ruleset_update"
+    AGREEMENT_SIGNED = "agreement_signed"  # 用户端签署（= legal_signed 用户侧动作）
 
 
 def _safe_ip(ip: str | None) -> str | None:

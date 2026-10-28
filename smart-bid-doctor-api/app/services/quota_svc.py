@@ -7,10 +7,15 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import Project, QuotaAccount
+from app.services import config_svc
+
+
+def free_monthly(db: Session) -> int:
+    """每月免费项目数：sys_config（quota.free_monthly，改值即生效）兜底 Settings。"""
+    return config_svc.get_int(db, "quota.free_monthly", get_settings().free_projects_per_month)
 
 
 def free_left(db: Session, user_id: int) -> int:
-    s = get_settings()
     month_start = dt.datetime.now(dt.UTC).replace(
         day=1, hour=0, minute=0, second=0, microsecond=0
     )
@@ -24,7 +29,7 @@ def free_left(db: Session, user_id: int) -> int:
         .scalar()
         or 0
     )
-    return max(0, s.free_projects_per_month - used)
+    return max(0, free_monthly(db) - used)
 
 
 def packs(db: Session, user_id: int) -> list[QuotaAccount]:

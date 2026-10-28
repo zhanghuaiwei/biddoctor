@@ -9,6 +9,7 @@ from app.core.enums import UserRole, UserStatus
 from app.core.errors import AppError
 from app.core.security import decode_token
 from app.models import User
+from app.services import rbac_svc
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -33,6 +34,22 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != UserRole.ADMIN:
         raise AppError(403, "FORBIDDEN", "需要管理员权限")
     return user
+
+
+def require_perm(perm: str):
+    """管理端权限点校验依赖工厂（05 §10：role + RBAC 双校验）。
+
+    role != admin 直接 404 同形（不泄露管理面存在性）；admin 细粒度权限点
+    经 rbac_svc 解析（无绑定角色 = 全量，兼容 seed_admin 路径）。
+    """
+
+    def _dep(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+        if user.role != UserRole.ADMIN:
+            raise AppError(404, "NOT_FOUND", "资源不存在")
+        rbac_svc.require_perm(rbac_svc.perm_set(db, user), perm)
+        return user
+
+    return _dep
 
 
 def client_ip(request: Request) -> str:

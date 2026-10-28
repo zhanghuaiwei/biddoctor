@@ -26,6 +26,10 @@ def request_code(body: EmailCodeIn, db: Session = Depends(get_db)):
 @router.post("/login", response_model=LoginOut)
 def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     ip = client_ip(request)
-    user = auth_svc.login(db, body.email, body.code, ip=ip)
+    user = auth_svc.login(
+        db, body.email, body.code, ip=ip,
+        user_agent=request.headers.get("User-Agent"),
+        invite_code=body.invite_code,
+    )
     audit_svc.log(db, user.id, audit_svc.AuditAction.LOGIN, target="email", ip=ip)
     return LoginOut(token=create_token(user.id, user.role), user=UserOut.model_validate(user))

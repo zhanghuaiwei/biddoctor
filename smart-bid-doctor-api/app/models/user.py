@@ -22,12 +22,15 @@ class User(Base, PkMixin, UuidMixin, TimestampMixin):
     nickname: Mapped[str | None] = mapped_column(String(64))
     role: Mapped[str] = mapped_column(String(16), default="user")  # user | admin
     status: Mapped[str] = mapped_column(String(16), default="active")
+    # [平台扩展列 05 §2] 所属机构：NULL=平台直营个人用户；细粒度权限走 sys_user_role
+    org_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_org.id"))
     invited_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
         Index("idx_users_email", "email", postgresql_where=text("deleted_at IS NULL")),
+        Index("idx_users_org", "org_id", postgresql_where=text("deleted_at IS NULL")),
     )
 
 

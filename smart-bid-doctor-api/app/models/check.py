@@ -45,6 +45,8 @@ class CheckItem(Base, PkMixin, UuidMixin, TimestampMixin):
     is_mandatory: Mapped[bool] = mapped_column(Boolean, default=False)
     check_hint: Mapped[str | None] = mapped_column(Text)
     confidence: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=Decimal("1.00"))
+    # [P2 扩展列] 新法版本追踪（02 §13，两法 2027–2028 修订出台后启用）
+    law_basis: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         UniqueConstraint("project_id", "code", name="uq_check_items_code"),
@@ -81,6 +83,10 @@ class Finding(Base, PkMixin, TimestampMixin):
     bid_quote: Mapped[str | None] = mapped_column(Text)
     confidence: Mapped[Decimal] = mapped_column(Numeric(3, 2))
     rule_overridden: Mapped[bool] = mapped_column(Boolean, default=False)
+    # [P2 扩展列] 用户标记误报 → 回流规则库迭代
+    feedback: Mapped[str | None] = mapped_column(String(8))  # agree | disagree
+    feedback_note: Mapped[str | None] = mapped_column(Text)
+    feedback_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
         Index("idx_findings_cmp", "comparison_id", "level"),
@@ -100,5 +106,7 @@ class Report(Base, PkMixin, UuidMixin, TimestampMixin):
     )
     report_data: Mapped[dict] = mapped_column(JSONB)
     html_path: Mapped[str | None] = mapped_column(String(512))
+    # [P2 扩展列] 用户查看/导出前勾选免责声明（03 v1.2 §5）
+    disclaimer_ack: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (Index("idx_reports_project", "project_id", "created_at"),)

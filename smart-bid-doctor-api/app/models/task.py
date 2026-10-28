@@ -80,6 +80,13 @@ class LlmCall(Base, PkMixin, TimestampMixin):
     cost_cny: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0"))
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error: Mapped[str | None] = mapped_column(Text)
+    # [平台扩展列 05 §9] 每次调用锚定所用模型与 prompt 版本（成本可对价、可回溯）
+    model_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("ai_model_config.id"), nullable=True
+    )
+    prompt_template_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("prompt_templates.id"), nullable=True
+    )
 
     __table_args__ = (
         Index("idx_llm_calls_proj", "project_id", "created_at"),
