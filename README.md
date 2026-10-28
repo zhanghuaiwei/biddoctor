@@ -3,11 +3,11 @@
 > **Give your bid a health check before opening.** 面向中国招投标场景的投标废标风险 AI 自查工具。
 > An AI self-check tool that helps bidders catch disqualification (废标) risks before bid opening.
 >
-> 创建：2026-10-24 · 状态：MVP 骨架就绪，业务引擎 M1 接入中 · License: MIT
+> 创建：2026-10-24 · 状态：业务功能全量闭环（LLM 引擎接入中）· 平台化管理域 v2.0 就绪 · License: MIT
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/zhanghuaiwei/smart-bid-doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/zhanghuaiwei/smart-bid-doctor/actions/workflows/ci.yml)
-![Status](https://img.shields.io/badge/status-MVP%20skeleton-blue)
+![Status](https://img.shields.io/badge/status-platform%20v2.0-blue)
 ![Python](https://img.shields.io/badge/python-3.12%2B-informational)
 ![Vue](https://img.shields.io/badge/vue-3.x-42b883)
 
