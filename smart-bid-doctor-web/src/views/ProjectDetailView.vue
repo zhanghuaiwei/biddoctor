@@ -184,9 +184,43 @@
 
       <el-empty
         v-else
-        description="暂无清单数据（清单生成引擎 M1 接入，上传招标文件后自动生成）"
+        description="暂无清单数据（抽取引擎接入后自动出数）；可先点击「生成废标条款清单」产出报告框架"
         :image-size="72"
       />
+    </el-card>
+
+    <el-card v-if="reports.length" class="lift-card">
+      <template #header>
+        <div class="panel-head">
+          <div class="panel-head-main">
+            <span class="panel-title">检查报告</span>
+            <span class="panel-count num">{{ reports.length }}</span>
+          </div>
+          <span class="panel-hint">生成后原件按阅后即焚策略回收，报告长期留存</span>
+        </div>
+      </template>
+      <el-table :data="reports">
+        <el-table-column prop="id" label="报告" width="100">
+          <template #default="{ row }">
+            <span class="num cell-id">#{{ row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="130">
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain">{{ REPORT_KIND_LABELS[row.kind as ReportKind] ?? row.kind }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="生成时间" min-width="180">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" text type="primary" @click="$router.push(`/reports/${row.id}`)">
+              查看报告
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-card>
   </div>
 
@@ -197,7 +231,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError, notifyApiError } from '@/api/client'
 import {
@@ -205,6 +239,7 @@ import {
   getTask,
   listCheckItems,
   listDocuments,
+  listReports,
   startChecklistReport,
   startCompare as startCompareApi,
 } from '@/api/projects'
@@ -222,16 +257,19 @@ import {
   PARSE_STATUS_TAGS,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_TAGS,
+  REPORT_KIND_LABELS,
   TASK_STATUS_LABELS,
   type CheckCategory,
   type DocumentRole,
   type ParseStatus,
+  type ReportKind,
 } from '@/constants/enums'
 import { formatDateTime } from '@/utils/format'
 import { confirmAction } from '@/utils/confirm'
-import type { CheckItemOut, DocumentItem, ProjectOut, TaskOut } from '@/types'
+import type { CheckItemOut, DocumentItem, ProjectOut, ReportOut, TaskOut } from '@/types'
 
 const route = useRoute()
+const router = useRouter()
 const pid = computed(() => Number(route.params.id))
 
 const project = ref<ProjectOut | null>(null)
@@ -241,6 +279,10 @@ const stats = ref<Record<string, number>>({})
 const activeTask = ref<TaskOut | null>(null)
 const loadFailed = ref(false)
 const categoryFilter = ref<CheckCategory | ''>('')
+const reports = ref<ReportOut[]>([])
+const checklistTaskId = ref<number | null>(null)
+
+const latestReportId = computed(() => reports.value[0]?.id ?? null)
 
 const filteredItems = computed(() =>
   categoryFilter.value ? checkItems.value.filter((i) => i.category === categoryFilter.value) : checkItems.value,
@@ -291,12 +333,50 @@ function onUploaded() {
 }
 
 async function genChecklist() {
+  const ok = await confirmAction(
+    '将基于招标文件解析结果生成《废标风险检查清单》报告（生成后原件按阅后即焚策略回收）。继续？',
+    { title: '生成检查清单', confirmText: '生成' },
+  )
+  if (!ok) return
   try {
-    await startChecklistReport(pid.value)
+    const res = await startChecklistReport(pid.value)
+    checklistTaskId.value = res.task_id
+    ElMessage.success(`清单报告任务已创建（task #${res.task_id}），生成中…`)
+    reportPolling.start()
   } catch (e) {
-    // 501 NOT_IMPLEMENTED 为引擎未接入的预期态，提示降级为 warning 而非 error
-    if (e instanceof ApiError && e.code === 'NOT_IMPLEMENTED') ElMessage.warning(e.message)
-    else notifyApiError(e)
+    notifyApiError(e)
+  }
+}
+
+/** 清单任务轮询：终态后拉报告并跳转报告详情 */
+const reportPolling = usePolling(async () => {
+  if (!checklistTaskId.value) return false
+  const t = await getTask(checklistTaskId.value).catch(() => null)
+  if (!t) return false
+  activeTask.value = null
+  if (t.status === 'succeeded') {
+    checklistTaskId.value = null
+    await loadReports()
+    if (latestReportId.value) {
+      ElMessage.success('清单报告已生成')
+      void router.push(`/reports/${latestReportId.value}`)
+    }
+    return false
+  }
+  if (t.status === 'failed') {
+    ElMessage.error(t.error_msg ?? '报告生成失败')
+    checklistTaskId.value = null
+    return false
+  }
+  return true
+}, 2500)
+
+async function loadReports() {
+  try {
+    const res = await listReports(pid.value, { limit: 10 })
+    reports.value = res.items
+  } catch {
+    reports.value = []
   }
 }
 
@@ -327,7 +407,7 @@ async function init() {
   loadFailed.value = false
   await loadProject()
   if (!loadFailed.value) {
-    await Promise.all([refreshDocs(), loadCheckItems()])
+    await Promise.all([refreshDocs(), loadCheckItems(), loadReports()])
     if (docs.value.some((d) => PARSE_BUSY_STATUSES.includes(d.parse_status))) polling.start()
   }
 }

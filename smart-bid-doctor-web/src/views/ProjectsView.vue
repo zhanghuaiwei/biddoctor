@@ -2,21 +2,20 @@
      新建（免费配额 402 时提示）+ 软删（不释放当月名额）。入口经 api/projects.ts 资源模块。 -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <span class="page-eyebrow">Workspace</span>
-        <h1 class="page-title">项目检查</h1>
-        <p class="page-desc">上传招标与投标文件，AI 逐条比对废标风险，结论全程留痕可查。</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader
+      eyebrow="Workspace"
+      title="项目检查"
+      desc="上传招标与投标文件，AI 逐条比对废标风险，结论全程留痕可查。"
+    >
+      <template #actions>
         <el-button type="primary" @click="dialog = true">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
           </svg>
           新建项目
         </el-button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <el-card class="lift-card">
       <template #header>
@@ -42,16 +41,12 @@
         </el-table-column>
         <el-table-column label="行业" width="130">
           <template #default="{ row }">
-            <el-tag size="small" effect="plain" :type="INDUSTRY_TAGS[row.industry as Industry] ?? 'info'">
-              {{ INDUSTRY_LABELS[row.industry as Industry] ?? row.industry }}
-            </el-tag>
+            <EnumTag :value="row.industry" :labels="INDUSTRY_LABELS" :tags="INDUSTRY_TAGS" plain />
           </template>
         </el-table-column>
         <el-table-column label="状态" width="126">
           <template #default="{ row }">
-            <el-tag size="small" :type="PROJECT_STATUS_TAGS[row.status as ProjectStatus] ?? 'info'">
-              <span class="tag-dot" />{{ PROJECT_STATUS_LABELS[row.status as ProjectStatus] ?? row.status }}
-            </el-tag>
+            <EnumTag :value="row.status" :labels="PROJECT_STATUS_LABELS" :tags="PROJECT_STATUS_TAGS" dot />
           </template>
         </el-table-column>
         <el-table-column label="更新时间" width="160">
@@ -73,15 +68,14 @@
         <el-button type="primary" @click="dialog = true">创建第一个项目</el-button>
       </el-empty>
 
-      <div v-if="total > pageSize" class="pager">
-        <el-pagination
-          layout="total, prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="page"
-          @current-change="onPage"
-        />
-      </div>
+      <ListPager
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        layout="total, prev, pager, next"
+        hide-single
+        @change="onPage"
+      />
     </el-card>
 
     <OverlayPanel v-model="dialog" title="新建检查项目" desc="创建后上传招标与投标文件即可开始自查" content-size="sm">
@@ -110,65 +104,41 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 
 import { createProject, deleteProject, listProjects } from '@/api/projects'
-import { notifyApiError } from '@/api/client'
+import EnumTag from '@/components/EnumTag.vue'
+import ListPager from '@/components/ListPager.vue'
 import OverlayPanel from '@/components/OverlayPanel.vue'
-import {
-  INDUSTRIES,
-  INDUSTRY_LABELS,
-  INDUSTRY_TAGS,
-  PROJECT_STATUS_LABELS,
-  PROJECT_STATUS_TAGS,
-  type Industry,
-  type ProjectStatus,
-} from '@/constants/enums'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
+import { usePagedList } from '@/composables/usePagedList'
+import { INDUSTRIES, INDUSTRY_LABELS, INDUSTRY_TAGS, PROJECT_STATUS_LABELS, PROJECT_STATUS_TAGS } from '@/constants/enums'
 import { formatDateTime } from '@/utils/format'
 import { confirmAction } from '@/utils/confirm'
 import type { ProjectOut } from '@/types'
 
-const items = ref<ProjectOut[]>([])
-const loading = ref(false)
+const { items, total, page, pageSize, loading, reload: load, onPage } = usePagedList<ProjectOut>(
+  ({ limit, offset }) => listProjects({ limit, offset }),
+  { errorText: '项目列表加载失败' },
+)
+
 const dialog = ref(false)
-const creating = ref(false)
-const total = ref(0)
-const page = ref(1)
-const pageSize = 20
 const form = reactive({ name: '', industry: 'general' })
 
-async function load() {
-  loading.value = true
-  try {
-    const res = await listProjects({ limit: pageSize, offset: (page.value - 1) * pageSize })
-    items.value = res.items
-    total.value = res.total
-  } catch (e) {
-    notifyApiError(e, '项目列表加载失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-function onPage(p: number) {
-  page.value = p
-  load()
-}
+const { pending: creating, run: runCreate } = useApiAction('创建失败')
+const { run: runRemove } = useApiAction('删除失败')
 
 async function create() {
   if (!form.name.trim()) return ElMessage.warning('请输入项目名称')
-  creating.value = true
-  try {
-    await createProject({ name: form.name.trim(), industry: form.industry })
-    dialog.value = false
-    form.name = ''
-    ElMessage.success('项目已创建')
-    await load()
-  } catch (e) {
-    notifyApiError(e, '创建失败')
-  } finally {
-    creating.value = false
-  }
+  const res = await runCreate(() =>
+    createProject({ name: form.name.trim(), industry: form.industry }),
+  )
+  if (!res.ok) return
+  dialog.value = false
+  form.name = ''
+  ElMessage.success('项目已创建')
+  await load()
 }
 
 async function remove(row: ProjectOut) {
@@ -178,16 +148,11 @@ async function remove(row: ProjectOut) {
     danger: true,
   })
   if (!ok) return
-  try {
-    await deleteProject(row.id)
-    ElMessage.success('已删除（当月免费名额不因删除释放）')
-    await load()
-  } catch (e) {
-    notifyApiError(e, '删除失败')
-  }
+  const res = await runRemove(() => deleteProject(row.id))
+  if (!res.ok) return
+  ElMessage.success('已删除（当月免费名额不因删除释放）')
+  await load()
 }
-
-onMounted(load)
 </script>
 
 <style scoped lang="less">
@@ -195,28 +160,6 @@ onMounted(load)
   width: 15px;
   height: 15px;
   margin-right: 4px;
-}
-
-.cell-id {
-  color: @c-text-muted;
-  font-size: @fs-xs;
-  letter-spacing: 0.02em;
-}
-
-.cell-strong {
-  font-weight: 600;
-  color: @c-text;
-}
-
-.cell-muted {
-  color: @c-text-muted;
-  font-size: @fs-xs;
-}
-
-.pager {
-  margin-top: 18px;
-  display: flex;
-  justify-content: flex-end;
 }
 
 .create-form {

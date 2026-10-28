@@ -163,6 +163,11 @@ export const VERDICT_LABELS: Record<Verdict, string> = {
 export const REPORT_KINDS = ['checklist', 'comparison'] as const
 export type ReportKind = (typeof REPORT_KINDS)[number]
 
+export const REPORT_KIND_LABELS: Record<ReportKind, string> = {
+  checklist: '检查清单',
+  comparison: '对照报告',
+}
+
 // ---- 订单 ----
 export const ORDER_STATUSES = ['pending', 'granted', 'expired', 'refunded'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
@@ -190,6 +195,34 @@ export const MAX_PAGES = 500
 // ============================================================================
 // 平台化域枚举（05 文档 v2.0）：sys_* / 附件 / 法务 / AI 治理 / 订阅
 // ============================================================================
+
+// ---- 用户角色（UserOut.role：user | admin，展示层标签注册）----
+export const USER_ROLES = ['user', 'admin'] as const
+export type UserRole = (typeof USER_ROLES)[number]
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  user: '用户',
+  admin: '管理员',
+}
+
+export const USER_ROLE_TAGS: Record<UserRole, TagType> = {
+  user: 'info',
+  admin: 'danger',
+}
+
+// ---- 用户状态 ----
+export const USER_STATUSES = ['active', 'banned'] as const
+export type UserStatus = (typeof USER_STATUSES)[number]
+
+export const USER_STATUS_LABELS: Record<UserStatus, string> = {
+  active: '正常',
+  banned: '已禁用',
+}
+
+export const USER_STATUS_TAGS: Record<UserStatus, TagType> = {
+  active: 'success',
+  banned: 'danger',
+}
 
 // ---- 通用启停状态 ----
 export const COMMON_STATUSES = ['active', 'disabled'] as const

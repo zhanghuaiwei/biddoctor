@@ -171,8 +171,11 @@ export function notifyApiError(e: unknown, fallback = '操作失败，请稍后�
   ElMessage.error(e instanceof Error && e.message ? e.message : fallback)
 }
 
-/** 拼接查询串（跳过空值） */
-export function withQuery(path: string, params: Record<string, string | number | undefined>): string {
+/** 拼接查询串（跳过空值；boolean 转字面量以支持 acked=true 这类筛选） */
+export function withQuery(
+  path: string,
+  params: Record<string, string | number | boolean | undefined>,
+): string {
   const q = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '') q.set(k, String(v))

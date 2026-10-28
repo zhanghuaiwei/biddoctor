@@ -2,13 +2,11 @@
      （与后端 FJ_SKU_CATALOG 同源），下单走 billing 资源模块，支付为人工核销引导文案。 -->
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <span class="page-eyebrow">Billing</span>
-        <h1 class="page-title">次数与订单</h1>
-        <p class="page-desc">免费额度与次数包余量一目了然，付款采用人工核销，到账后自动入账。</p>
-      </div>
-    </header>
+    <PageHeader
+      eyebrow="Billing"
+      title="次数与订单"
+      desc="免费额度与次数包余量一目了然，付款采用人工核销，到账后自动入账。"
+    />
 
     <!-- 额度概览：三张数据卡，强数值弱说明，首屏即可判断余量 -->
     <div class="overview cascade-in">
@@ -82,6 +80,15 @@
           <p class="pack-unit num">约 ¥{{ unitPrice(s) }} / 次</p>
           <el-button type="primary" :plain="s.code !== bestCode" @click="order(s)">立即下单</el-button>
         </article>
+
+        <!-- 订阅计划（P2）：sub_* 计划在售时展示，下单走订单统一入口 -->
+        <article v-for="p in activePlans" :key="p.code" class="pack pack-sub">
+          <span class="pack-badge pack-badge-sub">订阅</span>
+          <div class="pack-name">{{ p.name }}</div>
+          <div class="pack-price num">¥{{ p.price_cny }}<small>/ {{ p.period_months }} 个月</small></div>
+          <p class="pack-unit num">每期发放 {{ p.compare_quota }} 次对照</p>
+          <el-button type="primary" plain @click="orderSubscription(p)">订阅</el-button>
+        </article>
       </div>
     </el-card>
 
@@ -92,6 +99,7 @@
             <span class="panel-title">我的订单</span>
             <span class="panel-count num">{{ orderTotal }}</span>
           </div>
+          <span class="panel-hint">转账后上传支付凭证，客服核销更快</span>
         </div>
       </template>
 
@@ -113,9 +121,7 @@
         </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag size="small" :type="ORDER_STATUS_TAGS[row.status as OrderStatus] ?? 'info'">
-              <span class="tag-dot" />{{ ORDER_STATUS_LABELS[row.status as OrderStatus] ?? row.status }}
-            </el-tag>
+            <EnumTag :value="row.status" :labels="ORDER_STATUS_LABELS" :tags="ORDER_STATUS_TAGS" dot />
           </template>
         </el-table-column>
         <el-table-column label="创建时间" width="160">
@@ -123,26 +129,79 @@
             <span class="cell-muted num">{{ formatDateTime(row.created_at) }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="凭证" width="130" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'pending'"
+              size="small"
+              text
+              type="primary"
+              @click="openVoucher(row as OrderOut)"
+            >
+              上传凭证
+            </el-button>
+            <span v-else class="cell-muted">—</span>
+          </template>
+        </el-table-column>
       </el-table>
       <el-empty v-else description="暂无订单记录" :image-size="72" />
     </el-card>
+
+    <!-- 支付凭证上传弹层 -->
+    <OverlayPanel v-model="voucherOpen" title="上传支付凭证" content-size="sm">
+      <p class="voucher-order num">订单号 <b>{{ voucherOrder?.order_no }}</b> ·
+        金额 <b>¥{{ voucherOrder?.amount_cny }}</b></p>
+      <el-upload
+        :auto-upload="false"
+        :limit="1"
+        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+        :on-change="onVoucherPick"
+        drag
+        class="voucher-upload"
+      >
+        <div class="voucher-drag">
+          <p>拖拽或点击选择凭证截图 / PDF</p>
+          <p class="voucher-hint">图片或 PDF · ≤{{ MAX_ATTACHMENT_MB }}MB</p>
+        </div>
+      </el-upload>
+      <template #footer>
+        <el-button @click="voucherOpen = false">取消</el-button>
+        <el-button type="primary" :loading="uploading" :disabled="!voucherFile" @click="uploadVoucher">
+          上传凭证
+        </el-button>
+      </template>
+    </OverlayPanel>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import { createOrder, getQuota, listOrders } from '@/api/billing'
+import { createOrder, getQuota, listActivePlans, listOrders } from '@/api/billing'
+import { uploadAttachment } from '@/api/platform'
 import { notifyApiError } from '@/api/client'
-import { ORDER_STATUS_LABELS, ORDER_STATUS_TAGS, type OrderStatus } from '@/constants/enums'
+import EnumTag from '@/components/EnumTag.vue'
+import OverlayPanel from '@/components/OverlayPanel.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useApiAction } from '@/composables/useApiAction'
+import {
+  MAX_ATTACHMENT_MB,
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_TAGS,
+} from '@/constants/enums'
 import { SKUS, type SkuInfo } from '@/constants/skus'
 import { formatDate, formatDateTime } from '@/utils/format'
 import { confirmAction } from '@/utils/confirm'
-import type { OrderOut, QuotaOut } from '@/types'
+import type { OrderOut, PlanOut, QuotaOut } from '@/types'
 
 const quota = ref<QuotaOut>({ free_left: 0, packs: [] })
 const orders = ref<OrderOut[]>([])
 const orderTotal = ref(0)
+const activePlans = ref<PlanOut[]>([])
+
+const voucherOpen = ref(false)
+const voucherOrder = ref<OrderOut | null>(null)
+const voucherFile = ref<File | null>(null)
 
 const packRemain = computed(() => quota.value.packs.reduce((sum, p) => sum + p.remain, 0))
 
@@ -155,9 +214,13 @@ function unitPrice(s: SkuInfo) {
   return (s.priceCny / s.times).toFixed(1)
 }
 
-/** SKU 展示名：优先本地目录，未知 code（后端新增）回退原码 */
+/** SKU 展示名：优先本地目录/订阅计划名，未知 code（后端新增）回退原码 */
 function skuTitle(code: string): string {
-  return SKUS.find((s) => s.code === code)?.title ?? code
+  return (
+    SKUS.find((s) => s.code === code)?.title ??
+    activePlans.value.find((p) => p.code === code)?.name ??
+    code
+  )
 }
 
 async function load() {
@@ -169,7 +232,17 @@ async function load() {
   } catch (e) {
     notifyApiError(e, '次数与订单加载失败')
   }
+  // 订阅计划非关键路径，失败静默
+  try {
+    activePlans.value = (await listActivePlans()).filter((p) => p.status === 'active')
+  } catch {
+    activePlans.value = []
+  }
 }
+
+const { run: runOrder } = useApiAction('下单失败')
+const { run: runSubOrder } = useApiAction('订阅下单失败')
+const { pending: uploading, run: runUpload } = useApiAction('凭证上传失败')
 
 async function order(sku: SkuInfo) {
   const ok = await confirmAction(`将以人工转账方式购买「${sku.title}」，金额 ¥${sku.priceCny}，核销后次数自动发放。`, {
@@ -177,18 +250,56 @@ async function order(sku: SkuInfo) {
     confirmText: '确认下单',
   })
   if (!ok) return
-  try {
-    const res = await createOrder(sku.code)
-    // 纯文本拼接订单信息（不使用 HTML 注入）
-    ElMessageBox.alert(
-      `订单号：${res.order_no}\n商品：${sku.title}\n金额：¥${res.amount_cny}\n\n${res.pay_hint}`,
-      '下单成功，请完成转账',
-      { confirmButtonText: '我知道了' },
-    )
-    await load()
-  } catch (e) {
-    notifyApiError(e, '下单失败')
+  const res = await runOrder(() => createOrder(sku.code))
+  if (!res.ok) return
+  // 纯文本拼接订单信息（不使用 HTML 注入）
+  ElMessageBox.alert(
+    `订单号：${res.data.order_no}\n商品：${sku.title}\n金额：¥${res.data.amount_cny}\n\n${res.data.pay_hint}`,
+    '下单成功，请完成转账',
+    { confirmButtonText: '我知道了' },
+  )
+  await load()
+}
+
+async function orderSubscription(plan: PlanOut) {
+  const ok = await confirmAction(
+    `将以人工转账方式订阅「${plan.name}」，金额 ¥${plan.price_cny}/期，核销后激活并发放 ${plan.compare_quota} 次对照。`,
+    { title: '确认订阅', confirmText: '确认订阅' },
+  )
+  if (!ok) return
+  const res = await runSubOrder(() => createOrder(plan.code))
+  if (!res.ok) return
+  ElMessageBox.alert(
+    `订单号：${res.data.order_no}\n订阅：${plan.name}\n金额：¥${res.data.amount_cny}\n\n${res.data.pay_hint}`,
+    '下单成功，请完成转账',
+    { confirmButtonText: '我知道了' },
+  )
+  await load()
+}
+
+function openVoucher(row: OrderOut) {
+  voucherOrder.value = row
+  voucherFile.value = null
+  voucherOpen.value = true
+}
+
+function onVoucherPick(file: { raw?: File }) {
+  if (!file.raw) return
+  if (file.raw.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
+    ElMessage.warning(`凭证文件超过 ${MAX_ATTACHMENT_MB}MB 上限`)
+    return
   }
+  voucherFile.value = file.raw
+}
+
+async function uploadVoucher() {
+  if (!voucherOrder.value || !voucherFile.value) return
+  const res = await runUpload(() =>
+    uploadAttachment('order_voucher', voucherFile.value as File, voucherOrder.value?.id),
+  )
+  if (!res.ok) return
+  ElMessage.success('凭证已上传，客服核销后将自动到账')
+  voucherOpen.value = false
 }
 
 onMounted(load)
@@ -366,23 +477,7 @@ onMounted(load)
   color: @c-text-muted;
 }
 
-// ---- 表格单元 ----
-.cell-strong {
-  font-size: @fs-sm;
-  color: @c-text;
-}
-
-.cell-muted {
-  font-size: @fs-xs;
-  color: @c-text-muted;
-}
-
-.cell-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: @fs-xs;
-  color: @c-text-sub;
-}
-
+// ---- 表格单元（.cell-strong/.cell-muted/.cell-mono 取全局共享类）----
 .remain {
   font-size: @fs-h2;
   font-weight: 700;

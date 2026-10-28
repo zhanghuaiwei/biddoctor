@@ -6,6 +6,6 @@ export function requestEmailCode(email: string): Promise<EmailCodeOut> {
   return api<EmailCodeOut>('/auth/email-code', { method: 'POST', body: JSON.stringify({ email }) })
 }
 
-export function login(email: string, code: string): Promise<LoginOut> {
-  return api<LoginOut>('/auth/login', { method: 'POST', body: JSON.stringify({ email, code }) })
+export function login(email: string, code: string, inviteCode?: string): Promise<LoginOut> {
+  return api<LoginOut>('/auth/login', { method: 'POST', body: JSON.stringify({ email, code, invite_code: inviteCode || undefined }) })
 }

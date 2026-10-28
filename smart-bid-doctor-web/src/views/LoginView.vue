@@ -65,6 +65,17 @@
               </el-button>
             </div>
           </el-form-item>
+          <el-form-item prop="invite_code">
+            <el-input v-model="form.invite_code" placeholder="邀请码（邀测期新账号必填，选填）" clearable>
+              <template #prefix>
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M3 10h18" />
+                  <path d="M9 15h6" />
+                </svg>
+              </template>
+            </el-input>
+          </el-form-item>
           <el-button type="primary" class="submit" :loading="loading" @click="login">
             登录 / 注册
           </el-button>
@@ -101,7 +112,7 @@ const auth = useAuthStore()
 const theme = useThemeStore()
 
 const formRef = ref<FormInstance>()
-const form = reactive({ email: '', code: '' })
+const form = reactive({ email: '', code: '', invite_code: '' })
 const rules: FormRules = {
   email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
   code: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
@@ -147,7 +158,7 @@ async function login() {
   if (!valid) return
   loading.value = true
   try {
-    const res = await loginApi(form.email, form.code)
+    const res = await loginApi(form.email, form.code, form.invite_code)
     auth.login(res.token, res.user.email)
     // 支持登录后回跳来源页（api/client 401 时携带 redirect）
     router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/projects')

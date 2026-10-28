@@ -7,9 +7,11 @@ import type {
   CompareStartedOut,
   DocumentListOut,
   DocumentStatusOut,
+  FeedbackOut,
   ProjectOut,
   ProjectPage,
   ReportOut,
+  ReportPage,
   TaskOut,
   UploadOut,
 } from '@/types'
@@ -61,9 +63,9 @@ export function listCheckItems(
   return api<CheckItemsPage>(withQuery(`/projects/${projectId}/check-items`, params))
 }
 
-/** M1 接入前为 501（ApiError.code === 'NOT_IMPLEMENTED'） */
+/** M1 报告闭环已实装：202 返回任务 id，前端轮询终态后拉取报告列表 */
 export function startChecklistReport(projectId: number) {
-  return api<{ report_id: number }>(`/projects/${projectId}/checklist-report`, { method: 'POST' })
+  return api<{ task_id: number }>(`/projects/${projectId}/checklist-report`, { method: 'POST' })
 }
 
 export function startCompare(projectId: number) {
@@ -77,6 +79,23 @@ export function getLatestComparison(projectId: number) {
 
 export function getReport(reportId: number) {
   return api<ReportOut>(`/reports/${reportId}`)
+}
+
+export function listReports(projectId: number, params: { limit?: number; offset?: number } = {}) {
+  return api<ReportPage>(withQuery(`/projects/${projectId}/reports`, params))
+}
+
+/** 免责声明确认（查看/导出前勾选） */
+export function ackReport(reportId: number) {
+  return api<ReportOut>(`/reports/${reportId}/ack`, { method: 'POST' })
+}
+
+/** 判定质量回流（P2）：agree 认可 / disagree 误报标记 */
+export function feedbackFinding(findingId: number, feedback: 'agree' | 'disagree', note?: string) {
+  return api<FeedbackOut>(`/findings/${findingId}/feedback`, {
+    method: 'POST',
+    body: JSON.stringify({ feedback, note }),
+  })
 }
 
 export function getTask(taskId: number) {

@@ -104,6 +104,14 @@
         <span class="header-spacer" />
         <QuotaBadge ref="quotaBadge" />
         <span class="header-divider" aria-hidden="true" />
+        <router-link v-if="isAdmin" class="admin-entry" to="/admin/dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="14" rx="2" />
+            <path d="M3 9h18" />
+            <path d="M8 14h8" />
+          </svg>
+          管理控制台
+        </router-link>
         <div class="user">
           <span class="avatar" aria-hidden="true">{{ initial }}</span>
           <span class="user-email">{{ email }}</span>
@@ -128,6 +136,7 @@
       </el-header>
 
       <el-main class="main">
+        <NoticeBanner />
         <!-- 子路由切换过渡（key 强制按路径重建，项目详情换 ID 也触发进场） -->
         <router-view v-slot="{ Component }">
           <transition name="page" mode="out-in">
@@ -136,17 +145,23 @@
         </router-view>
       </el-main>
     </el-container>
+
+    <!-- 协议签署门禁（05 §8：生效版未签署时强制弹层） -->
+    <AgreementGate />
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { usePermissionStore } from '@/stores/permission'
 import QuotaBadge from '@/components/QuotaBadge.vue'
+import NoticeBanner from '@/components/NoticeBanner.vue'
+import AgreementGate from '@/components/AgreementGate.vue'
 import { confirmAction } from '@/utils/confirm'
 
 const router = useRouter()
@@ -154,8 +169,16 @@ const route = useRoute()
 // storeToRefs 解构保持响应性（email 展示随登录态实时更新）
 const { email } = storeToRefs(useAuthStore())
 const theme = useThemeStore()
+const permission = usePermissionStore()
 const menuOpen = ref(false)
 const quotaBadge = ref<InstanceType<typeof QuotaBadge>>()
+
+// 管理端入口（05 §2.3）：登录后拉取权限点，非 admin 不渲染
+const isAdmin = computed(() => permission.perms.size > 0)
+
+onMounted(() => {
+  void permission.load()
+})
 
 // 顶栏面包屑末级（详情页统一按前缀判定，避免路由参数散落判断）
 const PAGE_TITLES: Record<string, string> = {
@@ -390,6 +413,34 @@ async function logout() {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.admin-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: @radius-pill;
+  background: @c-accent-soft;
+  color: @c-accent;
+  font-size: @fs-xs;
+  font-weight: 600;
+  text-decoration: none;
+  transition: box-shadow @dur-base @ease-out, transform @dur-base @ease-out;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    box-shadow: @shadow-accent-sm;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: @bp-md) {
+    display: none;
+  }
 }
 
 .avatar {
