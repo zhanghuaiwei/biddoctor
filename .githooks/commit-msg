@@ -1,0 +1,110 @@
+#!/bin/sh
+
+# 校验 Git 提交信息是否符合 Conventional Commits（范式参考：kxkj-backend .githooks）。
+# 触发时机：执行 git commit 后，Git 会把提交信息文件路径作为第一个参数传入本脚本。
+# 启用方式：make hooks（即 git config core.hooksPath .githooks），规范详见 .githooks/README.md。
+commit_msg_file="$1"
+
+print_error() {
+  # 使用 shell 内建 printf 输出错误信息，避免依赖 cat、grep、sed 等外部命令。
+  printf '%s\n' '提交信息不符合规范。'
+  printf '%s\n' ''
+  printf '%s\n' '请使用 Conventional Commits：'
+  printf '%s\n' '  <type>(<scope>): <subject>'
+  printf '%s\n' ''
+  printf '%s\n' 'scope 可省略：'
+  printf '%s\n' '  <type>: <subject>'
+  printf '%s\n' ''
+  printf '%s\n' '允许的 type：'
+  printf '%s\n' '  feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert'
+  printf '%s\n' ''
+  printf '%s\n' '示例：'
+  printf '%s\n' '  git commit -m "feat(api): 新增对照发起端点"'
+  printf '%s\n' '  git commit -m "docs: 补充 AI 工作留存记录"'
+}
+
+fail() {
+  print_error
+  exit 1
+}
+
+# 读取提交信息第一行作为标题，提交正文不参与格式校验。
+# 这样可以兼容多行提交信息，同时强制标题保持统一格式。
+IFS= read -r first_line < "$commit_msg_file" || fail
+
+# 兼容 Windows 工具生成的 UTF-8 BOM 或 CRLF，避免隐藏字符导致合法提交被误拦。
+bom="$(printf '\357\273\277')"
+cr="$(printf '\r')"
+first_line="${first_line#$bom}"
+first_line="${first_line%$cr}"
+
+# 允许 Git 自动生成的合并、回滚提交继续执行，避免合并分支时被格式规则误拦。
+case "$first_line" in
+  Merge\ *|Revert\ *)
+    exit 0
+    ;;
+esac
+
+# 允许的格式：
+#   feat: 添加登录验证功能
+#   fix(login): 修复按钮点击失效问题
+#   refactor(api)!: 调整开放接口鉴权逻辑
+#
+# scope 可选；冒号后空格推荐但不强制。
+case "$first_line" in
+  *':'*)
+    prefix="${first_line%%:*}"
+    subject="${first_line#*:}"
+    # 冒号后空格推荐但不强制；如果只有一个空格，去掉后再判断标题是否为空。
+    subject="${subject# }"
+    ;;
+  *)
+    fail
+    ;;
+esac
+
+# subject 不能为空，也不能只有空白字符。
+case "$subject" in
+  *[![:space:]]*)
+    ;;
+  *)
+    fail
+    ;;
+esac
+
+# 兼容 Conventional Commits 的破坏性变更标记，例如 feat!: 或 refactor(api)!:。
+case "$prefix" in
+  *!)
+    prefix="${prefix%!}"
+    ;;
+esac
+
+type="$prefix"
+scope=''
+
+# 拆分可选 scope，并校验 scope 只能使用英文、数字、点、下划线、斜杠和中横线。
+case "$prefix" in
+  *'('*')')
+    type="${prefix%%(*}"
+    scope_part="${prefix#*(}"
+    scope="${scope_part%)}"
+    [ -n "$scope" ] || fail
+    case "$scope" in
+      *[!A-Za-z0-9._/-]*)
+        fail
+        ;;
+    esac
+    ;;
+  *'('*|*')'*)
+    fail
+    ;;
+esac
+
+case "$type" in
+  feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)
+    exit 0
+    ;;
+  *)
+    fail
+    ;;
+esac

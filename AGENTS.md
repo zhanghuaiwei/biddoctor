@@ -16,6 +16,7 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 - 修改任务自动按 §分级 定级并走 §强制闭环，**无需用户指名级别**；"继续/按方案落地/就这么改"承接当前任务范围，切换模块或功能时重新定级。
 - 修改前先 `git status`：保留用户已有改动，不做无关格式化、批量重排或回滚；与用户未提交改动冲突时先停下确认。
 - 仓库内容每次有更改或新增后，**主动询问用户是否推送远程**；获肯定答复后才推送（未提交的先按仓库规范提交再推送，禁 force push）。
+- 提交信息遵循 Conventional Commits `type(scope): 中文描述`（type 白名单与 scope 惯例见 `.githooks/README.md`，钩子经 `make hooks` 启用）；工作区混有多批次改动时**按归属拆分提交**，交付说明划清本次增量与既有未提交改动的边界。
 - 普通问答只读本文件；其余按 §上下文路由 命中再读，不预加载全仓文档。
 
 ## 分级
@@ -49,6 +50,8 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 2. **不要物理删除用户数据**：只允许 `deleted_at` 软删；硬删仅限 `worker/handlers/purge.py` 生命周期任务。
 3. **不要绕过统一错误体**：业务错误一律 `raise AppError(status, "UPPER_SNAKE_CODE", "中文提示")`，响应恒为 `{"error": {"code", "message"}}`。
 4. **不要新增基础设施组件**（Redis/Celery/ES/独立向量库）——架构决策见 README 技术选型表；替代实现：队列=PG SKIP LOCKED、锁/计数=行锁与原子 UPDATE、限流=进程内滑窗、会话=无状态 JWT、向量=pgvector、检索=pg_trgm（完整映射与引入信号见 README「Redis 替代方案」），演进信号出现前禁止预建。
+5. **不触碰真实敏感数据**：代码、测试、审计/日志/留痕一律使用假数据，不写入或输出真实密码、token、密钥、证书与生产敏感数据；外部写操作与对生产环境的 DB 执行必须另行明确授权。
+6. **不为 AI 协作引入重型工具链**：MCP 服务、RAG、多 Agent 编排、外部自动化平台等，未经用户明确要求不得引入（与第 4 条同逻辑：演进信号出现前禁止预建）。
 
 ## 代码范式
 
@@ -59,7 +62,7 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 | 枚举 | 状态/角色/类型取值一律引用 `app/core/enums.py`（StrEnum 注册表）与前端 `src/constants/enums.ts`，禁散落字面量；新增取值先改两处注册表再同步文档（03 §3 取值域） |
 | 错误码 | `raise AppError(status, "UPPER_SNAKE_CODE", "中文提示")`，code 必须登记 `app/core/errors.py::ERROR_CODES`（`tests/test_errors_registry.py` AST 守卫：未登记/状态不一致即红）；响应恒为 `{"error": {"code", "message"}}` |
 | 事务 | commit 只出现在 service/api 编排层；`task_svc.create` 只 flush；失败路径 `db.rollback()` 防半提交；**计数型规则（免费配额等）必须 `WITH FOR UPDATE` 行锁**；**一次性凭据（验证码等）必须原子 UPDATE 消费 + rowcount 判定**；**前置校验先于扣减**（对照发起：双文件就绪 400 先于配额扣减 402，避免无谓扣减+回滚写放大） |
-| 审计 | `audit_svc.log()` 独立事务、失败不阻断主业务；action 一律引用 `AuditAction` 常量（禁魔法字符串）；自动附带 `request_id`；**不参与业务事务** |
+| 审计 | `audit_svc.log()` 独立事务、失败不阻断主业务；action 一律引用 `AuditAction` 常量（禁魔法字符串）；自动附带 `request_id`；**不参与业务事务**；**只覆盖写/状态变更操作**（查询/分页/导出/下载等只读不写审计，不以 HTTP 方法判定写操作）；detail 禁明文敏感数据 |
 | 时间 | 全部 `dt.datetime.now(dt.UTC)` + `TIMESTAMPTZ`；北京时区调度用 UTC+8 固定偏移；**用户可见日期（订单号等）显式 +8h，禁止依赖容器本地时钟** |
 | 金额/邮箱 | 金额 `Decimal`（Numeric 列 + ORM/Schema 注解 Decimal，JSON 输出字符串）；比例/置信度等非金额数值可用 float；email 全串 lower 归一（注册/登录同口径） |
 | 软删 | 用户数据查询必带 `deleted_at.is_(None)`（报告/任务等 join 查询同样要过滤项目软删）；**例外：配额计数类统计不含软删过滤**（软删不释放当月名额，防刷） |
@@ -82,6 +85,8 @@ smart-bid-doctor：标书废标风险 AI 自查。FastAPI + SQLAlchemy 2 + Postg
 ## 测试与验证
 
 ```bash
+make verify      # 仓库根统一门禁：后端 lint+单测 + 前端 lint+build（分目录细则如下）
+
 cd smart-bid-doctor-api
 make lint        # ruff，提交前必须全绿
 make test        # 单测（无需 DB）
@@ -90,7 +95,7 @@ make test-int    # 全量（需 FJ_TEST_DATABASE_URL，见 tests/conftest.py）
 
 新增端点三件套：smoke 路由断言（`tests/test_smoke.py`）+ 集成正常路径 + 越权 404/错误码路径。
 带内存状态（限流/节流单例）的测试必须用 autouse fixture 清理状态。
-前端：`pnpm build`（vue-tsc 类型检查 + vite 构建，在 `smart-bid-doctor-web/`；package.json 暂无 lint 脚本）。
+前端：`pnpm lint`（ESLint，vue/essential + ts recommended 防错门禁）+ `pnpm build`（vue-tsc 类型检查 + vite 构建，均在 `smart-bid-doctor-web/`）。
 
 ## 交付说明
 
@@ -123,8 +128,10 @@ make test-int    # 全量（需 FJ_TEST_DATABASE_URL，见 tests/conftest.py）
 | 测试环境 | `tests/conftest.py`（FJ_TEST_DATABASE_URL） |
 | 留痕参照 | `tests/test_auth_security.py` |
 | AI 工作留存 | `docs/records/README.md`（规范）、`docs/records/`（历史记录，追溯既往 AI 产出先查这里） |
+| 提交规范/Git 钩子 | `.githooks/README.md`（Conventional Commits、type 白名单与 `make hooks` 启用） |
 | 部署 | `docker-compose.prod.yml`、`deploy/` |
 
 ## 变更反哺
 
 修完 bug 或加完功能：检查本文件与内部 skill 的范式条目是否需要更新（新决策规则、新安全基线、新留痕要求），**与代码变更同一次提交内完成**，保持范式与实现一致。
+范式演进对照：本文件是内部参考项目 kxkj-backend「可移植 AI 工程引擎」（`.ai/`：项目画像/门禁脚本/证据/Eval）的轻量精简落地；升级范式时按需对照采纳（取其条文与门禁思想，不整包搬运——该引擎为 PowerShell/Java 生态，与本仓 uv+pnpm 不匹配）。
