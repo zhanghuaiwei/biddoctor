@@ -2,7 +2,8 @@
      侧栏 <@bp-md 折叠为抽屉；顶栏左侧 hamburger 唤出。视觉令牌统一取 variables.less。 -->
 <template>
   <el-container class="layout">
-    <el-aside class="aside" width="236px">
+    <!-- 导航布局可配置：侧边栏（默认）/ 顶部导航 -->
+    <el-aside v-if="theme.navLayout === 'side'" class="aside" width="236px">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -95,7 +96,29 @@
           </svg>
         </el-button>
 
-        <div class="crumb" aria-label="当前位置">
+        <div v-if="theme.navLayout === 'top'" class="brand brand-top">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l7 3v5c0 4.4-3 8.1-7 10-4-1.9-7-5.6-7-10V6l7-3z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </span>
+          <span class="brand-name">标书废检</span>
+        </div>
+
+        <el-menu
+          v-if="theme.navLayout === 'top'"
+          router
+          mode="horizontal"
+          :default-active="$route.path"
+          :ellipsis="false"
+          class="top-menu"
+        >
+          <el-menu-item index="/projects">项目检查</el-menu-item>
+          <el-menu-item index="/quota">次数与订单</el-menu-item>
+        </el-menu>
+
+        <div v-if="theme.navLayout === 'side'" class="crumb" aria-label="当前位置">
           <span class="crumb-root">工作台</span>
           <span class="crumb-sep">/</span>
           <span class="crumb-current">{{ pageTitle }}</span>
@@ -268,6 +291,67 @@ async function logout() {
 .nav {
   flex: 1;
   padding-top: 18px;
+}
+
+// ---- 顶部导航布局（navLayout = top 时顶栏内渲染）----
+.brand-top {
+  padding: 0;
+  border-bottom: none;
+  gap: 8px;
+  margin-right: 4px;
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: @radius-sm;
+
+    svg {
+      width: 17px;
+      height: 17px;
+    }
+  }
+
+  @media (max-width: @bp-md) {
+    display: none;
+  }
+}
+
+.brand-name {
+  font-size: @fs-h3;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: @c-text;
+}
+
+.top-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: @c-text-sub;
+  --el-menu-active-color: var(--app-accent);
+  --el-menu-hover-bg-color: transparent;
+  --el-menu-hover-text-color: var(--app-accent);
+  --el-menu-horizontal-height: @header-h;
+  border-bottom: none;
+  margin-left: 8px;
+
+  :deep(.el-menu-item) {
+    height: @header-h;
+    padding: 0 14px;
+    font-size: @fs-sm;
+    border-bottom: 2px solid transparent;
+    transition:
+      color @dur-fast @ease-out,
+      border-color @dur-fast @ease-out;
+  }
+
+  :deep(.el-menu-item.is-active) {
+    font-weight: 600;
+    border-bottom-color: var(--app-accent);
+  }
+
+  @media (max-width: @bp-md) {
+    display: none;
+  }
 }
 
 .nav-label {

@@ -56,10 +56,43 @@ export const DRAWER_SIZE_MAP: Record<DrawerWidth, string> = {
   wide: '480px',
 }
 
+// ---- 布局偏好 ----
+export const NAV_LAYOUTS = ['side', 'top'] as const
+export type NavLayout = (typeof NAV_LAYOUTS)[number]
+
+export const NAV_LAYOUT_LABELS: Record<NavLayout, string> = {
+  side: '侧边栏',
+  top: '顶部导航',
+}
+
+export const PAGE_WIDTHS = ['standard', 'wide'] as const
+export type PageWidth = (typeof PAGE_WIDTHS)[number]
+
+export const PAGE_WIDTH_LABELS: Record<PageWidth, string> = {
+  standard: '标准',
+  wide: '全宽',
+}
+
+export const DENSITIES = ['compact', 'standard', 'comfortable'] as const
+export type Density = (typeof DENSITIES)[number]
+
+export const DENSITY_LABELS: Record<Density, string> = {
+  compact: '紧凑',
+  standard: '标准',
+  comfortable: '宽松',
+}
+
 // ---- 交互偏好默认值 ----
 export const DEFAULT_INTERACTION = {
   overlayMode: 'auto' as OverlayMode,
   drawerWidth: 'medium' as DrawerWidth,
   closeOnClickModal: true,
   closeOnPressEscape: true,
+}
+
+// ---- 布局偏好默认值 ----
+export const DEFAULT_LAYOUT = {
+  navLayout: 'side' as NavLayout,
+  pageWidth: 'standard' as PageWidth,
+  density: 'standard' as Density,
 }

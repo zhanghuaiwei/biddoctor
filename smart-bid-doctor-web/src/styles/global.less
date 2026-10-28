@@ -127,6 +127,63 @@ p {
   }
 }
 
+// ===== 布局偏好（theme store 写入 data-* 属性）=====
+// 内容宽度：全宽时取消最大宽度限制
+html[data-page-width='wide'] .page {
+  max-width: none;
+}
+
+// 界面密度：紧凑 / 宽松覆盖页边距、卡片内边距、页头间距与表格行高
+html[data-density='compact'] {
+  --el-card-padding: 16px;
+
+  .page {
+    padding: 20px 24px 48px;
+  }
+
+  .page-head {
+    margin-bottom: 18px;
+  }
+
+  .el-card__header {
+    padding: 12px 16px;
+  }
+
+  .el-table .el-table__cell {
+    padding: 9px 0;
+  }
+}
+
+html[data-density='comfortable'] {
+  --el-card-padding: 28px;
+
+  .page {
+    padding: 36px 40px 80px;
+  }
+
+  .page-head {
+    margin-bottom: 32px;
+  }
+
+  .el-card__header {
+    padding: 20px 26px;
+  }
+
+  .el-table .el-table__cell {
+    padding: 17px 0;
+  }
+}
+
+@media (max-width: @bp-md) {
+  html[data-density='compact'] .page {
+    padding: 16px 14px 40px;
+  }
+
+  html[data-density='comfortable'] .page {
+    padding: 22px 18px 56px;
+  }
+}
+
 // ===== 页面标题体系（各视图页头统一取用）=====
 .page-head {
   display: flex;

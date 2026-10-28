@@ -12,9 +12,13 @@ import {
   ACCENT_PRESETS,
   DEFAULT_ACCENT,
   DEFAULT_INTERACTION,
+  DEFAULT_LAYOUT,
   DRAWER_SIZE_MAP,
+  type Density,
   type DrawerWidth,
+  type NavLayout,
   type OverlayMode,
+  type PageWidth,
   type ThemeMode,
 } from '@/constants/theme'
 import { STORAGE_KEYS } from '@/constants/storage'
@@ -27,13 +31,21 @@ interface ThemePrefs {
   drawerWidth: DrawerWidth
   closeOnClickModal: boolean
   closeOnPressEscape: boolean
+  navLayout: NavLayout
+  pageWidth: PageWidth
+  density: Density
 }
 
 const VALID_HEX = /^#[0-9a-fA-F]{6}$/
 
 /** 读取持久化偏好（脏数据一律回退默认，避免坏值污染根变量） */
 function loadPrefs(): ThemePrefs {
-  const fallback: ThemePrefs = { mode: 'light', accent: DEFAULT_ACCENT, ...DEFAULT_INTERACTION }
+  const fallback: ThemePrefs = {
+    mode: 'light',
+    accent: DEFAULT_ACCENT,
+    ...DEFAULT_INTERACTION,
+    ...DEFAULT_LAYOUT,
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.theme)
     if (!raw) return fallback
@@ -43,11 +55,18 @@ function loadPrefs(): ThemePrefs {
       parsed.overlayMode === 'dialog' || parsed.overlayMode === 'drawer' ? parsed.overlayMode : 'auto'
     const drawerWidth: DrawerWidth =
       parsed.drawerWidth === 'narrow' || parsed.drawerWidth === 'wide' ? parsed.drawerWidth : 'medium'
+    const navLayout: NavLayout = parsed.navLayout === 'top' ? 'top' : 'side'
+    const pageWidth: PageWidth = parsed.pageWidth === 'wide' ? 'wide' : 'standard'
+    const density: Density =
+      parsed.density === 'compact' || parsed.density === 'comfortable' ? parsed.density : 'standard'
     return {
       mode,
       accent: typeof parsed.accent === 'string' && VALID_HEX.test(parsed.accent) ? parsed.accent : DEFAULT_ACCENT,
       overlayMode,
       drawerWidth,
+      navLayout,
+      pageWidth,
+      density,
       closeOnClickModal:
         typeof parsed.closeOnClickModal === 'boolean' ? parsed.closeOnClickModal : DEFAULT_INTERACTION.closeOnClickModal,
       closeOnPressEscape:
@@ -68,6 +87,9 @@ export const useThemeStore = defineStore('theme', () => {
   const drawerWidth = ref<DrawerWidth>(prefs.drawerWidth)
   const closeOnClickModal = ref(prefs.closeOnClickModal)
   const closeOnPressEscape = ref(prefs.closeOnPressEscape)
+  const navLayout = ref<NavLayout>(prefs.navLayout)
+  const pageWidth = ref<PageWidth>(prefs.pageWidth)
+  const density = ref<Density>(prefs.density)
   const drawerOpen = ref(false)
 
   // 跟随系统：监听配色偏好变化，system 模式下实时切换
@@ -88,6 +110,10 @@ export const useThemeStore = defineStore('theme', () => {
     const dark = isDark.value
     root.classList.toggle('dark', dark)
     root.dataset.themeMode = mode.value
+    // 布局偏好经 data-* 交由 global.less / MainLayout 消费，避免组件内散落判断
+    root.dataset.navLayout = navLayout.value
+    root.dataset.pageWidth = pageWidth.value
+    root.dataset.density = density.value
 
     const set = (name: string, value: string) => root.style.setProperty(name, value)
     set('--app-accent', accent.value)
@@ -111,12 +137,15 @@ export const useThemeStore = defineStore('theme', () => {
       drawerWidth: drawerWidth.value,
       closeOnClickModal: closeOnClickModal.value,
       closeOnPressEscape: closeOnPressEscape.value,
+      navLayout: navLayout.value,
+      pageWidth: pageWidth.value,
+      density: density.value,
     }
     localStorage.setItem(STORAGE_KEYS.theme, JSON.stringify(payload))
   }
 
   watch(
-    [mode, accent, overlayMode, drawerWidth, closeOnClickModal, closeOnPressEscape, isDark],
+    [mode, accent, overlayMode, drawerWidth, closeOnClickModal, closeOnPressEscape, navLayout, pageWidth, density, isDark],
     () => {
       apply()
       save()
@@ -140,7 +169,19 @@ export const useThemeStore = defineStore('theme', () => {
     drawerWidth.value = next
   }
 
-  /** 恢复默认：亮色 + 首个品牌强调色 + 默认交互偏好 */
+  function setNavLayout(next: NavLayout) {
+    navLayout.value = next
+  }
+
+  function setPageWidth(next: PageWidth) {
+    pageWidth.value = next
+  }
+
+  function setDensity(next: Density) {
+    density.value = next
+  }
+
+  /** 恢复默认：亮色 + 首个品牌强调色 + 默认交互与布局偏好 */
   function reset() {
     mode.value = 'light'
     accent.value = DEFAULT_ACCENT
@@ -148,6 +189,9 @@ export const useThemeStore = defineStore('theme', () => {
     drawerWidth.value = DEFAULT_INTERACTION.drawerWidth
     closeOnClickModal.value = DEFAULT_INTERACTION.closeOnClickModal
     closeOnPressEscape.value = DEFAULT_INTERACTION.closeOnPressEscape
+    navLayout.value = DEFAULT_LAYOUT.navLayout
+    pageWidth.value = DEFAULT_LAYOUT.pageWidth
+    density.value = DEFAULT_LAYOUT.density
   }
 
   function openDrawer() {
@@ -168,10 +212,16 @@ export const useThemeStore = defineStore('theme', () => {
     drawerSize,
     closeOnClickModal,
     closeOnPressEscape,
+    navLayout,
+    pageWidth,
+    density,
     setMode,
     setAccent,
     setOverlayMode,
     setDrawerWidth,
+    setNavLayout,
+    setPageWidth,
+    setDensity,
     reset,
     openDrawer,
   }

@@ -1,4 +1,5 @@
-<!-- 主题配置抽屉：外观模式（亮/暗/跟随系统）+ 主题色预设 + 实时预览。
+<!-- 主题配置抽屉：外观模式 + 主题色（登录页与工作台共用）；
+     布局配置与交互偏好为工作台专属，登录/注册路由下隐藏（登录页为独立分屏版式，不参与工作台布局偏好）。
      所有状态归口 stores/theme.ts，本组件只负责展示与调用动作（色阶计算/DOM 写回均在 store）。 -->
 <template>
   <el-drawer
@@ -13,7 +14,9 @@
     <header class="drawer-head">
       <div>
         <h2 class="drawer-title">外观设置</h2>
-        <p class="drawer-desc">偏好保存在本机浏览器，修改后立即生效</p>
+        <p class="drawer-desc">
+          {{ isLogin ? '仅调整登录页外观，偏好保存在本机浏览器' : '偏好保存在本机浏览器，修改后立即生效' }}
+        </p>
       </div>
       <el-button text circle aria-label="关闭外观设置" @click="theme.drawerOpen = false">
         <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
@@ -41,28 +44,91 @@
 
     <section class="section">
       <h3 class="section-title">主题色</h3>
-      <div class="swatches">
-        <button
-          v-for="p in theme.presets"
-          :key="p.key"
-          type="button"
-          class="swatch"
-          :class="{ 'is-active': theme.accent === p.color }"
-          :style="{ '--swatch': p.color }"
-          :aria-label="`使用${p.label}主题色`"
-          @click="theme.setAccent(p.color)"
-        >
-          <span class="swatch-dot">
-            <svg v-if="theme.accent === p.color" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 12l5 5 9-10" />
-            </svg>
-          </span>
-          <span class="swatch-label">{{ p.label }}</span>
-        </button>
+      <div class="accent-row">
+        <div class="swatches">
+          <button
+            v-for="p in theme.presets"
+            :key="p.key"
+            type="button"
+            class="swatch"
+            :class="{ 'is-active': theme.accent === p.color }"
+            :style="{ '--swatch': p.color }"
+            :aria-label="`使用${p.label}主题色`"
+            @click="theme.setAccent(p.color)"
+          >
+            <span class="swatch-dot">
+              <svg v-if="theme.accent === p.color" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12l5 5 9-10" />
+              </svg>
+            </span>
+          </button>
+        </div>
+        <el-color-picker
+          class="accent-picker"
+          :model-value="theme.accent"
+          color-format="hex"
+          :show-alpha="false"
+          :predefine="predefineColors"
+          :validate-event="false"
+          aria-label="自定义主题色"
+          @change="onPickColor"
+        />
+      </div>
+      <p class="accent-hint">
+        点击色块使用品牌预设，右侧取色器可自定义任意主题色{{ activePreset ? `（当前：${activePreset.label}）` : '（当前为自定义色）' }}
+      </p>
+    </section>
+
+    <section v-if="!isLogin" class="section">
+      <h3 class="section-title">布局配置</h3>
+      <div class="field">
+        <span class="field-label">导航布局</span>
+        <div class="seg">
+          <button
+            v-for="n in NAV_LAYOUTS"
+            :key="n"
+            type="button"
+            class="seg-btn"
+            :class="{ 'is-active': theme.navLayout === n }"
+            @click="theme.setNavLayout(n)"
+          >
+            {{ NAV_LAYOUT_LABELS[n] }}
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">内容宽度</span>
+        <div class="seg">
+          <button
+            v-for="w in PAGE_WIDTHS"
+            :key="w"
+            type="button"
+            class="seg-btn"
+            :class="{ 'is-active': theme.pageWidth === w }"
+            @click="theme.setPageWidth(w)"
+          >
+            {{ PAGE_WIDTH_LABELS[w] }}
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">界面密度</span>
+        <div class="seg">
+          <button
+            v-for="d in DENSITIES"
+            :key="d"
+            type="button"
+            class="seg-btn"
+            :class="{ 'is-active': theme.density === d }"
+            @click="theme.setDensity(d)"
+          >
+            {{ DENSITY_LABELS[d] }}
+          </button>
+        </div>
       </div>
     </section>
 
-    <section class="section">
+    <section v-if="!isLogin" class="section">
       <h3 class="section-title">交互偏好</h3>
       <div class="field">
         <span class="field-label">大内容承载</span>
@@ -105,45 +171,54 @@
       </div>
     </section>
 
-    <section class="section">
-      <h3 class="section-title">效果预览</h3>
-      <div class="preview">
-        <div class="preview-head">
-          <span class="preview-title">检查项目</span>
-          <el-tag size="small" type="success"><span class="tag-dot" />清单就绪</el-tag>
-        </div>
-        <p class="preview-desc">上传双文件后自动比对废标风险，结论全程留痕。</p>
-        <div class="preview-actions">
-          <el-button type="primary" size="small">新建项目</el-button>
-          <el-button size="small">查看详情</el-button>
-        </div>
-      </div>
-    </section>
-
     <footer class="drawer-foot">
-      <el-button class="reset-btn" @click="theme.reset()">恢复默认（外观 + 交互）</el-button>
-      <p class="foot-note">当前：{{ modeLabel }}</p>
+      <el-button class="reset-btn" @click="theme.reset()">
+        {{ isLogin ? '恢复默认外观' : '恢复默认（外观 + 布局 + 交互）' }}
+      </el-button>
+      <p class="foot-note">当前：{{ modeLabel }}{{ activePreset ? '' : ' · 自定义主题色' }}</p>
     </footer>
   </el-drawer>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 import {
+  ACCENT_PRESETS,
+  DENSITIES,
+  DENSITY_LABELS,
   DRAWER_WIDTHS,
   DRAWER_WIDTH_LABELS,
+  NAV_LAYOUTS,
+  NAV_LAYOUT_LABELS,
   OVERLAY_MODES,
   OVERLAY_MODE_LABELS,
+  PAGE_WIDTHS,
+  PAGE_WIDTH_LABELS,
   THEME_MODES,
   THEME_MODE_LABELS,
   type ThemeMode,
 } from '@/constants/theme'
 import { useThemeStore } from '@/stores/theme'
 
+const route = useRoute()
 const theme = useThemeStore()
 
+// 作用域：登录/注册路由下只保留适用于登录页的配置项（App.vue 全局唯一实例，按路由自动切换）
+const isLogin = computed(() => route.path === '/login')
+
 const modeLabel = computed(() => THEME_MODE_LABELS[theme.mode])
+
+const activePreset = computed(() => theme.presets.find((p) => p.color === theme.accent))
+
+/** 颜色选择器预置色 = 品牌预设（快捷自选 + 任意自定义） */
+const predefineColors = ACCENT_PRESETS.map((p) => p.color)
+
+function onPickColor(color: string | null) {
+  // null = 清空选择，忽略保持当前色；非法值由 store 的 VALID_HEX 守卫静默拒绝
+  if (color) theme.setAccent(color)
+}
 
 // 模式图标：内联 SVG，避免引入图标库依赖
 const MODE_ICONS: Record<ThemeMode, string> = {
@@ -246,18 +321,23 @@ const MODE_ICONS: Record<ThemeMode, string> = {
   }
 }
 
-// ---- 主题色 ----
+// ---- 主题色（预设 + 取色器）----
+.accent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .swatches {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  display: flex;
+  flex: 1;
+  gap: 10px;
 }
 
 .swatch {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   padding: 4px;
   border: none;
   background: none;
@@ -275,12 +355,16 @@ const MODE_ICONS: Record<ThemeMode, string> = {
   background: var(--swatch);
   color: #fff;
   box-shadow: 0 0 0 2px transparent;
-  transition: box-shadow @dur-fast @ease-out;
+  transition: box-shadow @dur-fast @ease-out, transform @dur-fast @ease-out;
 
   svg {
     width: 14px;
     height: 14px;
   }
+}
+
+.swatch:hover .swatch-dot {
+  transform: scale(1.1);
 }
 
 .swatch.is-active .swatch-dot {
@@ -289,14 +373,15 @@ const MODE_ICONS: Record<ThemeMode, string> = {
     0 0 0 4px var(--swatch);
 }
 
-.swatch-label {
-  font-size: 11px;
-  color: @c-text-muted;
+.accent-picker {
+  flex: none;
 }
 
-.swatch.is-active .swatch-label {
-  color: @c-text;
-  font-weight: 600;
+.accent-hint {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: @c-text-muted;
 }
 
 // ---- 交互偏好 ----
@@ -366,39 +451,6 @@ const MODE_ICONS: Record<ThemeMode, string> = {
     font-weight: 600;
     box-shadow: @shadow-xs;
   }
-}
-
-// ---- 预览 ----
-.preview {
-  padding: 16px;
-  border: 1px solid @c-line-soft;
-  border-radius: @radius;
-  background: @c-surface-alt;
-}
-
-.preview-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.preview-title {
-  font-size: @fs-sm;
-  font-weight: 600;
-  color: @c-text;
-}
-
-.preview-desc {
-  margin: 8px 0 14px;
-  font-size: @fs-xs;
-  line-height: 1.6;
-  color: @c-text-sub;
-}
-
-.preview-actions {
-  display: flex;
-  gap: 8px;
 }
 
 // ---- 底部 ----
