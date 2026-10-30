@@ -8,20 +8,29 @@
       <span class="slot-meta">PDF · ≤{{ MAX_UPLOAD_MB }}MB</span>
     </div>
     <div class="slot-row">
-      <!-- 点击选区：原生 file input 隐藏保留（可访问性 aria-label），整区可点击 -->
-      <button type="button" class="slot-zone" :class="{ 'has-file': !!fileName }" @click="input?.click()">
+      <!-- 一步上传：点击选区选中文件即自动上传，不再单独放「上传」按钮 -->
+      <button
+        type="button"
+        class="slot-zone"
+        :class="{ 'has-file': !!fileName, 'is-uploading': uploading }"
+        :disabled="uploading"
+        @click="input?.click()"
+      >
         <span class="zone-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <svg v-if="!uploading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 16V4" />
             <path d="M8 8l4-4 4 4" />
             <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
           </svg>
+          <svg v-else class="zone-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 3a9 9 0 1 0 9 9" />
+          </svg>
         </span>
         <span class="zone-body">
-          <span class="zone-main">{{ fileName || '点击选择 PDF 文件' }}</span>
-          <span class="zone-hint">{{ fileName ? '已选择，点击可更换' : '单个文件，上传后自动解析' }}</span>
+          <span class="zone-main" :title="fileName || undefined">{{ zoneMain }}</span>
+          <span class="zone-hint">{{ zoneHint }}</span>
         </span>
-        <span class="zone-cta">选择</span>
+        <span class="zone-cta">{{ zoneCta }}</span>
       </button>
       <input
         ref="input"
@@ -31,23 +40,20 @@
         :aria-label="`选择${title}（PDF）`"
         @change="onPick"
       />
-      <el-button type="primary" :loading="uploading" :disabled="!fileName" @click="onUpload">
-        上传
-      </el-button>
     </div>
-    <!-- 上传进度：XHR onprogress 百分比；完成后随 uploading 复位隐藏 -->
+    <!-- 上传进度：XHR onprogress 百分比（文本已在选区右侧显示，进度条只做视觉进度） -->
     <el-progress
       v-if="uploading"
       class="slot-progress"
       :percentage="percent"
-      :stroke-width="6"
-      :show-text="true"
+      :stroke-width="4"
+      :show-text="false"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { uploadDocument } from '@/api/projects'
 import { notifyApiError } from '@/api/client'
@@ -65,18 +71,41 @@ const emit = defineEmits<{ uploaded: [] }>()
 const input = ref<HTMLInputElement>()
 const uploading = ref(false)
 const fileName = ref('')
+const fileSize = ref(0)
 const percent = ref(0)
 
+// 选区文案由上传状态驱动：空闲引导选择，上传中显示文件名与百分比，完成后复位
+const zoneMain = computed(() => fileName.value || '点击选择 PDF 文件')
+const zoneHint = computed(() =>
+  uploading.value
+    ? `${formatBytes(fileSize.value)} · 上传中 ${percent.value}%`
+    : '单个文件，选择后自动上传并解析',
+)
+const zoneCta = computed(() => (uploading.value ? `${percent.value}%` : '上传'))
+
+function resetPicker() {
+  fileName.value = ''
+  fileSize.value = 0
+  if (input.value) input.value.value = ''
+}
+
+/** 选中即上传（一步到位），尺寸不符时直接提示并复位选择 */
 function onPick() {
-  fileName.value = input.value?.files?.[0]?.name ?? ''
+  const file = input.value?.files?.[0]
+  if (!file) return
+  fileName.value = file.name
+  fileSize.value = file.size
+  void onUpload()
 }
 
 async function onUpload() {
   const file = input.value?.files?.[0]
-  if (!file) return ElMessage.warning(`请先选择${props.title} PDF 文件`)
+  if (!file) return
   // 前端预校验（体验层）；后端魔数/加密/页数为最终校验方
   if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
-    return ElMessage.warning(`文件超过 ${MAX_UPLOAD_MB}MB 上限（当前 ${formatBytes(file.size)}）`)
+    ElMessage.warning(`文件超过 ${MAX_UPLOAD_MB}MB 上限（当前 ${formatBytes(file.size)}）`)
+    resetPicker()
+    return
   }
   uploading.value = true
   percent.value = 0
@@ -90,17 +119,15 @@ async function onUpload() {
     notifyApiError(e, '上传失败')
   } finally {
     uploading.value = false
-    fileName.value = ''
-    if (input.value) input.value.value = ''
+    resetPicker()
   }
 }
 </script>
 
 <style scoped lang="less">
-// 工作台 upload-row 内两槽均分一行，窄屏随父级 flex-wrap 折行铺满
+// 工作台 upload-row（grid 两列）内的单个槽位：占满所在列，长文件名靠 ellipsis 收敛
 .upload-slot {
-  flex: 1;
-  min-width: 280px;
+  min-width: 0;
 }
 
 .slot-title-row {
@@ -124,22 +151,22 @@ async function onUpload() {
 
 .slot-row {
   display: flex;
-  gap: 10px;
   align-items: stretch;
 }
 
 .slot-progress {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 // 点击选区：虚线框 + 悬停提亮，选中后转为实线强调色
 .slot-zone {
   flex: 1;
   min-width: 0;
+  min-height: 62px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px dashed @c-line;
   border-radius: @radius;
   background: @c-surface-alt;
@@ -148,7 +175,8 @@ async function onUpload() {
   font: inherit;
   transition:
     border-color @dur-base @ease-out,
-    background-color @dur-base @ease-out;
+    background-color @dur-base @ease-out,
+    box-shadow @dur-base @ease-out;
 
   &:hover {
     border-color: color-mix(in srgb, var(--app-accent) 45%, var(--app-line));
@@ -159,7 +187,8 @@ async function onUpload() {
     }
   }
 
-  &.has-file {
+  &.has-file,
+  &.is-uploading {
     border-style: solid;
     border-color: color-mix(in srgb, var(--app-accent) 30%, var(--app-line));
     background: @c-accent-soft;
@@ -168,6 +197,22 @@ async function onUpload() {
       background: @c-accent;
       color: #fff;
     }
+  }
+
+  // 上传中不可再点，光标给出「进行中」反馈
+  &:disabled {
+    cursor: progress;
+  }
+}
+
+// 上传中图标旋转（reduced-motion 下由 global.less 统一停用）
+.zone-spinner {
+  animation: zone-spin 0.9s linear infinite;
+}
+
+@keyframes zone-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

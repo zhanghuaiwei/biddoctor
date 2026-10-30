@@ -334,6 +334,28 @@ html .el-table {
   }
 }
 
+// ===== 二次确认弹窗（ElMessageBox，teleport 到 body，样式随暗色变量自动切换）=====
+// 基础样式由 main.ts 显式引入 message-box/style/css；此处只做产品化收敛（圆角/描边/排版）
+html .el-message-box {
+  padding: 22px 22px 18px;
+  border: 1px solid @c-line-soft;
+  border-radius: @radius-lg;
+  background: @c-surface;
+  box-shadow: @shadow-lg;
+}
+
+html .el-message-box__title {
+  font-size: @fs-h3;
+  font-weight: 700;
+  color: @c-text;
+}
+
+html .el-message-box__message {
+  font-size: @fs-sm;
+  line-height: 1.65;
+  color: @c-text-sub;
+}
+
 // ===== 按钮 =====
 html .el-button {
   font-weight: 500;

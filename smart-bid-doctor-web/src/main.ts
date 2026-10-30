@@ -1,6 +1,10 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import 'element-plus/theme-chalk/dark/css-vars.css'
+// 编程式 API（ElMessage / ElMessageBox）不经过模板解析，unplugin 只自动导入函数不带样式，
+// 缺样式时确认弹窗会退化成无背景、无居中的裸文本（utils/confirm.ts 全站二次确认因此受影响）
+import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
 import App from './App.vue'
 import router from './router'
 import './styles/global.less'
