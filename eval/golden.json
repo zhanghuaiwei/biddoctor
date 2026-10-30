@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "desc": "M1/B4 金标集样例（02 §10）：blocks 为解析引擎产物形态（page/seq/type/text），expect 为人工标注的废标条款。抽取召回门槛 ≥90%，预筛候选召回门槛 ≥98%（make eval --prescreen-only）。新增金标：向 cases 追加 case，raw_text 必须逐字取自某 block.text。",
+  "cases": [
+    {
+      "name": "通用工程施工招标-须知条款",
+      "blocks": [
+        {"page": 1, "seq": 1, "type": "heading", "text": "第一章 投标须知", "section": null},
+        {"page": 1, "seq": 2, "type": "text", "text": "1.1 投标人须具备独立法人资格，并提供有效的营业执照副本复印件。", "section": "投标须知"},
+        {"page": 1, "seq": 3, "type": "text", "text": "1.2 投标文件未按要求签字盖章的，作废标处理。", "section": "投标须知"},
+        {"page": 2, "seq": 1, "type": "text", "text": "2.1 投标报价不得超过最高限价 500 万元，超过者作无效标处理。", "section": "报价要求"},
+        {"page": 2, "seq": 2, "type": "text", "text": "2.2 投标函中的大小写金额不一致的，以大写金额为准。", "section": "报价要求"},
+        {"page": 2, "seq": 3, "type": "text", "text": "3.1 投标文件正本一份，副本四份，均须装订成册并密封递交。", "section": "递交要求"},
+        {"page": 3, "seq": 1, "type": "text", "text": "4.1 投标保证金应当在开标前缴纳到指定账户。", "section": "保证金"},
+        {"page": 3, "seq": 2, "type": "text", "text": "5.1 本项目不接受联合体投标。", "section": "其他"}
+      ],
+      "expect": [
+        {"category": "qualification", "raw_text": "1.1 投标人须具备独立法人资格，并提供有效的营业执照副本复印件。", "ref_page": 1, "is_mandatory": true},
+        {"category": "format_seal", "raw_text": "1.2 投标文件未按要求签字盖章的，作废标处理。", "ref_page": 1, "is_mandatory": true},
+        {"category": "price", "raw_text": "2.1 投标报价不得超过最高限价 500 万元，超过者作无效标处理。", "ref_page": 2, "is_mandatory": true},
+        {"category": "price", "raw_text": "2.2 投标函中的大小写金额不一致的，以大写金额为准。", "ref_page": 2, "is_mandatory": false},
+        {"category": "format_seal", "raw_text": "3.1 投标文件正本一份，副本四份，均须装订成册并密封递交。", "ref_page": 2, "is_mandatory": false}
+      ]
+    },
+    {
+      "name": "货物采购招标-星号条款",
+      "blocks": [
+        {"page": 1, "seq": 1, "type": "heading", "text": "第二章 采购需求", "section": null},
+        {"page": 1, "seq": 2, "type": "text", "text": "★1. 投标货物必须原厂全新，未使用过，并随附原厂出厂合格证。", "section": "采购需求"},
+        {"page": 1, "seq": 3, "type": "text", "text": "2. 供货期为合同签订后 30 日内，具体可与采购人协商。", "section": "采购需求"},
+        {"page": 2, "seq": 1, "type": "text", "text": "3. 投标人不具备招标文件规定资格条件的，其投标将被拒绝。", "section": "资格要求"},
+        {"page": 2, "seq": 2, "type": "table", "text": "序号 | 参数 | 要求\n1 | 供货周期 | ≤30日\n2 | 质保期 | ≥3年", "section": "采购需求"},
+        {"page": 2, "seq": 3, "type": "text", "text": "4. 未按规定缴纳投标保证金的投标文件不予接收。", "section": "保证金"}
+      ],
+      "expect": [
+        {"category": "star", "raw_text": "★1. 投标货物必须原厂全新，未使用过，并随附原厂出厂合格证。", "ref_page": 1, "is_mandatory": true},
+        {"category": "qualification", "raw_text": "3. 投标人不具备招标文件规定资格条件的，其投标将被拒绝。", "ref_page": 2, "is_mandatory": true},
+        {"category": "compliance", "raw_text": "4. 未按规定缴纳投标保证金的投标文件不予接收。", "ref_page": 2, "is_mandatory": true}
+      ]
+    }
+  ]
+}

@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     zhipu_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
     llm_model_heavy: str = "glm-4.6"  # 重任务：条款抽取/对照判定（02 §7）
     llm_model_light: str = "glm-4.5-flash"  # 轻任务：分类/摘要/兜底重试
+    llm_model_embed: str = "embedding-3"  # 向量化（02 §5，EMBED_DIM=1024）
 
     @model_validator(mode="after")
     def _prod_guard(self):

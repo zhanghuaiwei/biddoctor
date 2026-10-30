@@ -1,4 +1,8 @@
-"""LLM Provider 抽象（02 §7）。模型名/版本进配置不进代码。"""
+"""LLM Provider 抽象（02 §7）。模型名/版本进配置不进代码。
+
+- chat：抽取/判定/摘要等对话型调用（heavy=抽取/判定，light=摘要/兜底）；
+- embed：块向量化（02 §5，embedding-3，EMBED_DIM=1024）——对照混合检索前置。
+"""
 
 from dataclasses import dataclass
 from typing import Protocol
@@ -21,4 +25,12 @@ class LLMProvider(Protocol):
         tier: str = "heavy",  # heavy=抽取/判定, light=摘要/兜底（02 §7）
         max_tokens: int = 4096,
         temperature: float = 0.1,
+        task_id: int | None = None,
+        project_id: int | None = None,
+        purpose: str = "extract",
+        prompt_template_id: int | None = None,
     ) -> ChatResult: ...
+
+    def embed(
+        self, texts: list[str], *, task_id: int | None = None, project_id: int | None = None
+    ) -> list[list[float]]: ...

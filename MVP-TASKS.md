@@ -1,10 +1,13 @@
 # smart-bid-doctor MVP 任务清单（P0/M1，W1–2）
 
-> 快照：2026-10-28（平台化 v2.0 实装批次），与代码同步维护（变更反哺：功能状态变化须同次提交更新本文件）。
+> 快照：2026-10-30（非 Agent 工程管线全量实装批次），与代码同步维护（变更反哺：功能状态变化须同次提交更新本文件）。
 > 实现备注：已完成功能的**详细实现说明在各模块 docstring 与函数注释内**（AGENTS.md §上下文路由可按场景定位）；未开始功能的**TODO 已标注在桩代码内**（含推荐方案 + 实现过程 + 验收）。
 > 状态图例：**[x]** 已完成且有测试 · **[~]** 底座/契约就绪、引擎未接 · **[ ]** 未开始。
 > 2026-10-28 批注：除 LLM/Agent 能力（A/C/E 的模型调用部分）外的业务功能已全量实装闭环，
 > 平台化管理域（05 文档 v2.0，40 表全量）见 §一 9–12；管理端前端 /admin 路由区 18 页就绪。
+> 2026-10-30 批注：A/C/E 工程管线全量实装（重试/熔断/记账/预算/预筛/检索/规则复核/任务链），
+> Agent 能力收敛为 `llm/zhipu.py` 两个 HTTP 调用体 TODO（`_post_chat`/`_post_embed`），
+> 配置注入后即插即用；B4 评测框架与 E1 压测脚本就绪（`make eval` / `make load-test`）。
 
 ## 一、已完成功能
 
@@ -89,7 +92,7 @@
 | [x] pdfplumber 表格页兜底（窄行多文本页候选，≤60 页预算） | `engine/parser/_page_tables` | 失败不阻断主解析 |
 | [x] 扫描页检测（is_scanned_ratio 累计；≥60% 转 need_review 不静默） | `worker/handlers/parse.py` | OCR 为可选安装层（PaddleOCR 未启用仅告警） |
 | [x] doc_blocks 分批落库（500 行/批随进度推进）+ 任务链续接 | `worker/handlers/parse.py` | 加密/损坏显式 _fail 不重试 |
-| [ ] B4 金标集评测（`make eval` 召回 ≥90%） | — | F1/F2 验收项，依赖 C 抽取引擎 |
+| [~] B4 金标集评测（`make eval` 召回 ≥90%） | `scripts/eval_extract.py` + `eval/golden.json` | 框架就绪：预筛召回金标 PASS（100%）；完整评测依赖 C 的 LLM 接入 |
 
 ### 10. 清单报告闭环非 LLM 部分（M1/D 实装）
 
@@ -140,38 +143,60 @@
 
 ## 二、未开始功能（TODO 已标注在代码，含推荐方案）
 
-### A. LLM 接入层 [ ] —— TODO(M1/A1–A3) @ `llm/zhipu.py`
+### A. LLM 接入层 [~] —— 编排就绪，HTTP 调用体 TODO(M1/A1–A3) @ `llm/zhipu.py`
 
-- **推荐方案**：httpx 直连 OpenAI 兼容 `/chat/completions`；429/5xx 指数退避 ≤3 次；连续 5 次失败熔断 5 分钟（阈值入 sys_config `llm.circuit_break_threshold`）；每次调用落 `llm_calls` 记账（**计价快照读 ai_model_config 注册表**，05 §9.3 实装就绪，锚定 model_id/prompt_template_id）。
-- **实现过程**：① `chat()` 组装 messages，json_mode 带 `response_format`；② 接 `llm/budget.py` 任务级 token 上限；③ 熔断器挂 chat 入口，熔断期快速失败不耗配额；④ 成功/失败均写 llm_calls；⑤ Prompt 模板从 prompt_templates 读 active 版。
-- **验收**：重试/熔断 mock 单测；配置注入后可真实调用返回结构化文本。
+- **已实装（2026-10-30，mock 单测 `tests/test_llm_provider.py`）**：`chat()` 编排链
+  （熔断检查 → token 预算 → 429/5xx 指数退避 ≤3 → 用量累计 → llm_calls 记账）；
+  进程内熔断器（阈值/窗口入 sys_config `llm.circuit_break_*`，`refresh_breaker` 热载，
+  熔断期 `LLM_CIRCUIT_OPEN` 快速失败不耗配额）；任务级预算（`llm/budget.py` BudgetTracker，
+  超限 `BUDGET_EXCEEDED` 确定性失败）；计价读 `ai_model_config` 注册表（独立事务记账，
+  失败不阻断）；Prompt 模板读 `prompt_templates` active 版（`ai_svc.active_prompt`，
+  坏模板回退内置契约）；`embed()` 向量化编排 + 形状校验（EMBED_DIM=1024）。
+- **TODO 边界**：仅 `_post_chat` / `_post_embed` 两个 HTTP 调用体——补 httpx POST +
+  Bearer 鉴权即插即用（方法体 ~15 行）；桩状态（NOT_IMPLEMENTED）不进熔断、不记账。
+- **验收**：重试/熔断/预算 mock 单测已绿；配置注入后可真实调用返回结构化文本。
 
-### C. 废标条款抽取 [ ] —— TODO(M1/C1–C3) @ `engine/extractor/__init__.py` + `handlers/extract.py`（MVP 核心难点）
+### C. 废标条款抽取 [~] —— 管线就绪，GLM 调用走 A 层桩 @ `engine/extractor` + `handlers/extract.py`（MVP 核心难点）
 
-- **推荐方案**：规则预筛（**读 rule_sets/rule_items active 版本，rule_svc.active_items 已就绪**）→ GLM 重模型 JSON Schema 结构化抽取五类条款 → 合并去重落 `check_items`。坏输出重试 ≤2 次、轻模型兜底，仍失败标 need_review 不静默丢弃。
-- **实现过程**：① 预筛产出候选 doc_blocks（解析引擎已产出 blocks）；② 分批调用（~20 段/批），llm_calls 记账（purpose=extract）；③ 解析失败重试链；④ 落库后 `checklist_ready` + 建后续任务链（checklist handler 已就绪）；⑤ `make eval` 金标评测。
-- **验收**：抽取召回 ≥90%（M1 门槛，02 §10）。
+- **已实装（2026-10-30，单测 `tests/test_extract_engine.py`）**：C1 规则预筛
+  （内置默认规则 ∪ `rule_svc.active_items` hint 条目，宁多勿漏，金标预筛召回 100% ≥98% 门槛）；
+  分批（20 段/批）+ Prompt 组装（段落带 `[P页码]` 溯源锚点，管理端模板优先坏模板回退）；
+  输出解析守卫（JSON 契约校验，坏条目跳过不整批作废）；C3 归一去重（NFKC 折叠 +
+  code 分配 QUAL/COMP/STAR/PRICE/FMT-NNN）+ 落库（(project_id, code) 冲突跳过）；
+  handler 编排（parse 就绪校验 → 分批抽取 → 坏输出重试 ≤2 轻模型兜底 → 全批失败
+  need_review 不静默；成功 `checklist_ready` + 入队 embed）。
+- **TODO 边界**：GLM 重模型真实抽取经 `provider.chat()`（A 层桩）——桩状态任务
+  need_review（error_code=NOT_IMPLEMENTED），接入后自动出数。
+- **验收**：抽取召回 ≥90%（M1 门槛，02 §10）——`make eval`（LLM 接入后跑完整模式）。
 
-### E. 对照与判定（M2）[ ] —— TODO(M2) @ `engine/comparator/__init__.py` + `handlers/compare.py` + `handlers/embed.py`
+### E. 对照与判定（M2）[~] —— 管线就绪，判定/embedding 调用走 A 层桩 @ `engine/comparator` + `handlers/compare.py` + `handlers/embed.py`
 
-- **推荐方案**：pg_trgm 文本 + pgvector 余弦（HNSW，EMBED_DIM=1024）混合检索（RRF 融合）→ GLM 重模型逐条 verdict（不确定绝不输出「满足」）→ 规则复核（rule_items veto 可推翻 LLM）→ findings + stats 汇总 → **check_svc.generate_comparison_report 报告封装已就绪**。
-- **实现过程**：① embed handler 先行（bid 文档块向量）；② 逐条检索 top-k → 判定；③ findings 落库 + stats → 建对照报告任务；④ 配额发起时已扣，失败不回滚走 need_review。
+- **已实装（2026-10-30，单测 `tests/test_comparator_engine.py`）**：混合检索
+  （pg_trgm similarity + pgvector 余弦双路召回 RRF 融合 k=60，query 向量缺失自动降级
+  trgm-only）；判定 Prompt 组装 + verdict 守卫（白名单外/坏 JSON 一律 uncertain，
+  绝不输出「满足」的合规底线在解析层兜底）；规则复核（veto 推翻满足结论标黄 /
+  must 缺失判 missing，`rule_overridden` 标记）；红黄绿映射 + stats 聚合；
+  findings 落库；embed handler（分批向量化写回，空文档 skipped）；compare handler
+  （幂等跳过 → 逐条检索判定 → done → 内联对照报告闭环 + 审计 → report_ready；
+  桩/熔断 need_review 不回滚已扣次数）。
+- **TODO 边界**：逐条 GLM 判定与 query/bid 块 embedding 经 `provider.chat()/embed()`
+  （A 层桩），接入后即插即用。
 - **验收**：判定与人工复核一致率 ≥85%（README 里程碑表）。
 
 ### F. 生产上线与验收 [ ]
 
 | 项 | 内容 | 备注 |
 |---|---|---|
-| [ ] E1 压测 | 50 并发上传 + 100 并发查询，worker 吞吐达标 | 04 §7 |
+| [~] E1 压测 | 脚本就绪 `make load-test EMAIL=...`（50 并发上传 + 100 并发查询，P50/95/99 + RPS + 错误率） | `scripts/load_test.py`；执行待部署环境，达标口径见脚本尾注 |
 | [ ] E2 Cron 接线 | sys_job 调度已内置于 worker 主循环（15s tick），部署验证 | 05 §3.4 |
 | [ ] E3 上线 | prod 迁移（bootstrap 含种子）+ 冒烟 + 备份演练 | compose 已备 |
-| [ ] F1/F2 金标评测 | `make eval` 抽取召回 ≥90% | 02 §10，依赖 C |
+| [ ] F1/F2 金标评测 | `make eval` 抽取召回 ≥90% | 02 §10，依赖 C 的 LLM 接入；预筛召回已 PASS |
 
 ## 三、关键路径（串行依赖）
 
-A（LLM 层）→ C（抽取）→ D（清单报告✅ 已实装）→ F（验收）；E（对照 M2）依赖 B✅/D✅ + embed。
-平台机制与解析/报告/平台域已就绪：LLM 层接入即插即用（handler 编排职责、错误码、记账、留痕、
-计价注册、prompt 版本、管理端 AI 治理页面均已预置）。
+A（HTTP 调用体 TODO）→ C 出数 → D（清单报告✅）→ F 验收；E（对照 M2）管线已就绪，
+A 接入后 embed/compare 即插即用。平台机制、解析/报告/平台域、A/C/E 工程管线均已就绪：
+**仅剩 `llm/zhipu.py` 两个 HTTP 调用体（Agent 能力 TODO）**——补齐后全链路自动出数。
 
 ## 四、明确不做（MVP 外）
 

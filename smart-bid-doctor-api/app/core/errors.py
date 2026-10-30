@@ -47,6 +47,8 @@ ERROR_CODES: dict[str, int] = {
     "WORKER_TIMEOUT": 0,
     "HANDLER_CRASH": 0,
     "UNKNOWN_TASK_TYPE": 0,
+    "BUDGET_EXCEEDED": 0,       # LLM 任务级 token 预算超限（02 §7），确定性失败不重试
+    "LLM_CIRCUIT_OPEN": 0,      # LLM 熔断期快速失败（05 §9.3），不耗配额
     # 平台化域（05 文档 v2.0）：系统管理 / 运维 / 附件 / 法务 / AI 治理 / 订阅
     "ORG_NOT_FOUND": 404,
     "ORG_HAS_CHILDREN": 409,     # 机构删除：存在子节点
